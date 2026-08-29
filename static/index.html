@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DaedalusOS — Autonomous AI Engineering</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-8 font-mono">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <header class="border-b border-slate-800 pb-4">
+      <h1 class="text-3xl font-bold text-indigo-400">⚡ DaedalusOS</h1>
+      <p class="text-sm text-slate-400">Autonomous Engineering Team with Self-Healing Verification</p>
+    </header>
+
+    <div class="flex gap-2">
+      <input id="promptInput" type="text" placeholder="e.g. Add JWT auth with token expiration..." 
+             class="flex-1 bg-slate-900 border border-slate-800 rounded px-4 py-2 focus:outline-none focus:border-indigo-500 text-sm">
+      <button onclick="startExecution()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded text-sm font-semibold transition">
+        Run Agents
+      </button>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 h-80 overflow-y-auto space-y-2" id="terminal">
+      <div class="text-slate-500 text-xs">Waiting for requirement...</div>
+    </div>
+  </div>
+
+  <script>
+    async function startExecution() {
+      const prompt = document.getElementById('promptInput').value;
+      const term = document.getElementById('terminal');
+      term.innerHTML = `<div class="text-indigo-400 text-xs">[SYSTEM] Dispatched requirement: "${prompt}"</div>`;
+
+      await fetch('/api/run', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ prompt })
+      });
+
+      const evtSource = new EventSource('/api/events');
+      evtSource.onmessage = function(event) {
+        const payload = JSON.parse(event.data);
+        const line = document.createElement('div');
+        line.className = "text-xs flex gap-2";
+        line.innerHTML = `<span class="text-indigo-400 font-bold">[${payload.step}]</span> <span>${payload.message}</span>`;
+        term.appendChild(line);
+        term.scrollTop = term.scrollHeight;
+
+        if (payload.step === 'COMPLETE') {
+          evtSource.close();
+        }
+      };
+    }
+  </script>
+</body>
+</html>
