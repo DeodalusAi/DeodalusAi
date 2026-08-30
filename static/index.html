@@ -1,56 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>DaedalusOS — Autonomous AI Engineering</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-8 font-mono">
-  <div class="max-w-4xl mx-auto space-y-6">
-    <header class="border-b border-slate-800 pb-4">
-      <h1 class="text-3xl font-bold text-indigo-400">⚡ DaedalusOS</h1>
-      <p class="text-sm text-slate-400">Autonomous Engineering Team with Self-Healing Verification</p>
-    </header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DaedalusOS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+    <div class="mx-auto max-w-4xl px-6 py-10">
+      <header class="mb-6 border-b border-slate-800 pb-4">
+        <h1 class="text-3xl font-bold text-indigo-400">DaedalusOS</h1>
+        <p class="mt-1 text-sm text-slate-400">Autonomous engineering workflow</p>
+      </header>
 
-    <div class="flex gap-2">
-      <input id="promptInput" type="text" placeholder="e.g. Add JWT auth with token expiration..." 
-             class="flex-1 bg-slate-900 border border-slate-800 rounded px-4 py-2 focus:outline-none focus:border-indigo-500 text-sm">
-      <button onclick="startExecution()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded text-sm font-semibold transition">
-        Run Agents
-      </button>
+      <div class="space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-2xl shadow-slate-950/40">
+        <label for="promptInput" class="block text-sm font-medium text-slate-300">Requirement</label>
+        <textarea
+          id="promptInput"
+          rows="4"
+          class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
+          placeholder="Describe the task to run through the agents..."
+        ></textarea>
+
+        <div class="flex justify-end">
+          <button
+            id="runButton"
+            type="button"
+            class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-700"
+          >
+            Run Agents
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-300">Live log</h2>
+          <span id="statusBadge" class="rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] uppercase tracking-wide text-slate-300">Idle</span>
+        </div>
+        <pre id="logPanel" class="h-80 overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-sm leading-6 text-slate-200">[SYSTEM] Waiting for a requirement...</pre>
+      </div>
     </div>
 
-    <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 h-80 overflow-y-auto space-y-2" id="terminal">
-      <div class="text-slate-500 text-xs">Waiting for requirement...</div>
-    </div>
-  </div>
+    <script>
+      const promptInput = document.getElementById('promptInput');
+      const runButton = document.getElementById('runButton');
+      const logPanel = document.getElementById('logPanel');
+      const statusBadge = document.getElementById('statusBadge');
 
-  <script>
-    async function startExecution() {
-      const prompt = document.getElementById('promptInput').value;
-      const term = document.getElementById('terminal');
-      term.innerHTML = `<div class="text-indigo-400 text-xs">[SYSTEM] Dispatched requirement: "${prompt}"</div>`;
+      let isRunning = false;
+      let eventSource = null;
 
-      await fetch('/api/run', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ prompt })
-      });
+      function appendLog(line) {
+        logPanel.textContent += (logPanel.textContent.endsWith('\n') || logPanel.textContent === '' ? '' : '\n') + line;
+        logPanel.scrollTop = logPanel.scrollHeight;
+      }
 
-      const evtSource = new EventSource('/api/events');
-      evtSource.onmessage = function(event) {
-        const payload = JSON.parse(event.data);
-        const line = document.createElement('div');
-        line.className = "text-xs flex gap-2";
-        line.innerHTML = `<span class="text-indigo-400 font-bold">[${payload.step}]</span> <span>${payload.message}</span>`;
-        term.appendChild(line);
-        term.scrollTop = term.scrollHeight;
+      function setRunning(running) {
+        isRunning = running;
+        runButton.disabled = running;
+        runButton.textContent = running ? 'Running...' : 'Run Agents';
+        statusBadge.textContent = running ? 'Running' : 'Idle';
+        statusBadge.className = running
+          ? 'rounded-full border border-indigo-500/40 bg-indigo-500/10 px-2 py-1 text-[10px] uppercase tracking-wide text-indigo-300'
+          : 'rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] uppercase tracking-wide text-slate-300';
+      }
 
-        if (payload.step === 'COMPLETE') {
-          evtSource.close();
+      async function startExecution() {
+        if (isRunning) return;
+
+        const prompt = promptInput.value.trim();
+        if (!prompt) {
+          appendLog('[SYSTEM] Please enter a requirement before running the agents.');
+          promptInput.focus();
+          return;
         }
-      };
-    }
-  </script>
-</body>
+
+        setRunning(true);
+        logPanel.textContent = '';
+        appendLog('[SYSTEM] Dispatching requirement: ' + prompt);
+
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+
+        try {
+          const response = await fetch('/api/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+          });
+
+          if (!response.ok) {
+            throw new Error('POST /api/run failed: ' + response.status);
+          }
+
+          const payload = await response.json();
+          appendLog('[SYSTEM] POST /api/run response: ' + JSON.stringify(payload));
+        } catch (error) {
+          appendLog('[ERROR] ' + error.message);
+          setRunning(false);
+          return;
+        }
+
+        eventSource = new EventSource('/api/events');
+
+        eventSource.onmessage = function (event) {
+          const payload = JSON.parse(event.data);
+          appendLog('[' + payload.step + '] ' + (payload.message || ''));
+
+          if (payload.step === 'COMPLETE') {
+            eventSource.close();
+            eventSource = null;
+            appendLog('[SYSTEM] Terminal event received. Run finished.');
+            setRunning(false);
+          }
+        };
+
+        eventSource.onerror = function () {
+          appendLog('[SYSTEM] Event stream closed.');
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          setRunning(false);
+        };
+      }
+
+      runButton.addEventListener('click', startExecution);
+    </script>
+  </body>
 </html>
