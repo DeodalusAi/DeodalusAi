@@ -49,6 +49,8 @@ class CodePatch(BaseModel):
 
 
 __all__ = [
+    "ReviewResult",
+    "AgentState",
     "TaskItem",
     "TaskBreakdown",
     "FilePatch",
