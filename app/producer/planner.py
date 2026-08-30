@@ -1,49 +1,65 @@
+from __future__ import annotations
+
+import asyncio
+from typing import Optional
+
 from app.producer.gateway import LLMGateway
 from app.schemas import TaskBreakdown
 
 PLANNER_SYSTEM_PROMPT = """
-You are a Staff Software Architect and Technical Lead.
-Your job is to analyze a software requirement and create a clear, execution-ready engineering plan.
+You are a Staff Software Architect and Engineering Lead.
+Your responsibility is to analyze software requirements and break them down into an execution-ready, dependency-ordered technical task graph.
 
-Guidelines:
-1. Break down the requirement into discrete, sequential subtasks (e.g., Schema/Models -> Business Logic/Core -> API Endpoints -> Unit Tests).
-2. Explicitly specify task dependencies (e.g., TASK-2 depends on TASK-1).
-3. Provide a concise architectural overview describing the tech stack, data flow, and file layout.
-4. Keep the scope targeted, practical, and clean for a Python/FastAPI environment.
+Strict Planning Rules:
+1. Break down the project into 3 to 6 logical, atomic tasks.
+2. Every task MUST have a deterministic ID formatted as 'TASK-1', 'TASK-2', etc.
+3. Explicitly link dependencies using task IDs (e.g., schemas/models must be created before business logic, and business logic before API routes).
+4. Provide a concrete 'architecture_overview' describing data flow, modules, database choices, and key libraries.
+5. Emphasize standard Python/FastAPI conventions and ensure dedicated tasks for unit testing.
+6. Keep the scope clean and production-ready.
 """
 
 class PlannerAgent:
-    def __init__(self, gateway: LLMGateway = None):
+    def __init__(self, gateway: Optional[LLMGateway] = None):
+        """Initializes the Planner Agent with the unified resilient LLM Gateway."""
         self.gateway = gateway or LLMGateway()
 
     async def plan(self, user_requirement: str) -> TaskBreakdown:
-        """Analyzes requirement and returns a structured TaskBreakdown."""
-        prompt = f"""
+        """
+        Transforms a raw user requirement string into a structured TaskBreakdown.
+        Guaranteed to return a valid Pydantic TaskBreakdown via LLMGateway.
+        """
+        user_prompt = f"""
 {PLANNER_SYSTEM_PROMPT}
 
 User Requirement:
-"{user_requirement}"
+"{user_requirement.strip()}"
 
-Generate the complete architecture overview and task breakdown.
+Analyze the requirement and generate the complete architecture overview and task breakdown.
 """
-        return await self.gateway.generate_structured(prompt, TaskBreakdown)
+        return await self.gateway.generate_structured(
+            prompt=user_prompt,
+            schema=TaskBreakdown,
+            model="gemini-2.0-flash"
+        )
+
 
 # --- Standalone Verification Test for Person 1 ---
 if __name__ == "__main__":
-    import asyncio
-
-    async def test():
+    async def run_standalone_test():
         planner = PlannerAgent()
         print("=== [Person 1] Testing Planner Agent ===")
-        req = "Build a URL shortener with SQLite persistence, click tracking, and custom short code support."
-        result = await planner.plan(req)
+        test_requirement = "Build a FastAPI rate-limiter middleware using Redis with configurable token bucket limits."
         
-        print(f"\nEpic: {result.epic_title}")
-        print(f"Architecture: {result.architecture_overview}\n")
-        print("Tasks:")
+        result: TaskBreakdown = await planner.plan(test_requirement)
+        
+        print("\n✅ Task Plan Successfully Generated!")
+        print(f"Epic Title: {result.epic_title}")
+        print(f"\nArchitecture Overview:\n{result.architecture_overview}\n")
+        print("Task Dependency Graph:")
         for task in result.tasks:
-            deps = f" (Depends on: {', '.join(task.dependencies)})" if task.dependencies else ""
+            deps = f" -> Depends on: {', '.join(task.dependencies)}" if task.dependencies else " -> Root Task"
             print(f"  [{task.id}] {task.title}{deps}")
-            print(f"      {task.description}")
+            print(f"       Details: {task.description}")
 
-    asyncio.run(test())
+    asyncio.run(run_standalone_test())
