@@ -1,0 +1,14 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- c:\Users\hitka\OneDrive\Dokumente\DeoDalusAi\DeodalusAi\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\hitka\OneDrive\Dokumente\DeoDalusAi\DeodalusAi
+plugins: anyio-4.14.2, langsmith-0.11.2
+collecting ... collected 5 items
+
+tests/test_sandbox.py::test_apply_patch_writes_file_content PASSED       [ 20%]
+tests/test_sandbox.py::test_apply_patch_creates_nested_directories PASSED [ 40%]
+tests/test_sandbox.py::test_execute_tests_returns_passed_true_for_passing_test PASSED [ 60%]
+tests/test_sandbox.py::test_execute_tests_returns_failed_for_failing_test PASSED [ 80%]
+tests/test_sandbox.py::test_execute_tests_times_out_and_reports_timeout PASSED [100%]
+
+============================== 5 passed in 7.17s ==============================
