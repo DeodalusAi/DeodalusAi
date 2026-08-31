@@ -13,16 +13,20 @@ try:
     from app.producer.researcher import ResearcherAgent
     from app.producer.developer import DeveloperAgent
 except ModuleNotFoundError:
+    import asyncio
+    
     class PlannerAgent:
-        async def plan(self, prompt: str):
+        async def plan(self):
+            await asyncio.sleep(0)  # Yield control to make it a proper async function
             return None
 
     class ResearcherAgent:
-        def search_context(self, prompt: str):
+        def search_context(self):
             return ""
 
     class DeveloperAgent:
-        async def generate_code(self, plan):
+        async def generate_code(self):
+            await asyncio.sleep(0)  # Yield control to make it a proper async function
             return None
 
 # Node wrapper functions
@@ -37,6 +41,9 @@ def researcher_node(state: AgentState) -> AgentState:
     researcher = ResearcherAgent()
     context = researcher.search_context(state["prompt"])
     state["logs"].append(f"Research Context: {context}")
+    # Store context for developer agent to use
+    if "research_context" not in state:
+        state["research_context"] = context
     return state
 
 async def developer_node(state: AgentState) -> AgentState:
@@ -117,7 +124,9 @@ async def healer_node(state: AgentState) -> AgentState:
         state["logs"].append("Healer generated a corrected patch")
     except Exception as exc:
         state["logs"].append(f"Healing stopped: {exc}")
-        state["iteration"] = state.get("iteration", 0) + 1
+        # Only increment iteration on actual heal attempt, not on exception
+        if state.get("code_patch"):
+            state["iteration"] = state.get("iteration", 0) + 1
 
     return state
 
@@ -151,7 +160,7 @@ workflow.add_edge("developer", "tester")
 
 # 4. Define Conditional Edge (The Autonomous Self-Healing Branch)
 def check_test_results(state: AgentState) -> str:
-    if state["test_output"].get("passed", False):
+    if state["test_output"] and state["test_output"].get("passed", False):
         return "github_pr"
     if state["iteration"] >= state["max_iterations"]:
         return END  # Safety cutoff
@@ -172,7 +181,7 @@ workflow.add_edge("healer", "tester")  # Cycles back to re-run pytest
 workflow.add_edge("github_pr", END)
 
 # 5. Compile Runnable Engine
-daedalus_engine = workflow.compile()
+daedalus_app = workflow.compile()
 
 
 if __name__ == "__main__":
@@ -198,10 +207,6 @@ if __name__ == "__main__":
 
         state["review"] = analyze_failure(state["test_output"])
         print(state["review"])
-
-        class FakePatch:
-            summary = "Broken patch"
-            files = []
 
         state["code_patch"] = type("Patch", (), {"summary": "Broken patch", "files": []})()
         try:

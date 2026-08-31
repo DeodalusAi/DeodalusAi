@@ -34,8 +34,57 @@ class RunRequest(BaseModel):
     max_iterations: int = 3
 
 
+def _build_event_payload(node_name: str, state_update: dict) -> dict:
+    """Extract and format node-specific metadata for UI events to reduce complexity."""
+    payload = {
+        "step": node_name.upper(),
+        "message": "",
+        "iteration": state_update.get("iteration", 0),
+    }
+    
+    # Get latest log message
+    if "logs" in state_update and state_update["logs"]:
+        payload["message"] = state_update["logs"][-1]
+    else:
+        payload["message"] = f"Executed node: {node_name}"
+    
+    # Build node-specific data payload
+    payload["data"] = _get_node_data(node_name, state_update)
+    
+    return payload
+
+
+def _get_node_data(node_name: str, state_update: dict) -> dict:
+    """Extract node-specific data to further reduce complexity."""
+    if node_name == "planner" and "plan" in state_update and state_update["plan"]:
+        return {
+            "epic_title": state_update["plan"].epic_title,
+            "task_count": len(state_update["plan"].tasks),
+        }
+    elif node_name == "developer" and "code_patch" in state_update and state_update["code_patch"]:
+        return {
+            "summary": state_update["code_patch"].summary,
+            "file_count": len(state_update["code_patch"].files),
+        }
+    elif node_name == "tester" and "test_output" in state_update and state_update["test_output"]:
+        return {
+            "passed": state_update["test_output"].get("passed", False),
+            "stdout": state_update["test_output"].get("stdout", ""),
+        }
+    elif node_name == "reviewer" and "review" in state_update and state_update["review"]:
+        review = state_update["review"]
+        return {"root_cause": review if isinstance(review, str) else str(review)}
+    elif node_name == "github_pr" and "pr_url" in state_update and state_update["pr_url"]:
+        return {"pr_url": state_update["pr_url"]}
+    
+    return {}
+
+
 async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
     """Executes the compiled LangGraph pipeline and feeds updates into the event queue."""
+    # Validate max_iterations bounds
+    safe_iterations = max(1, min(max_iterations, 10))
+    
     initial_state: AgentState = {
         "prompt": prompt,
         "plan": None,
@@ -43,7 +92,7 @@ async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
         "test_output": None,
         "review": None,
         "iteration": 0,
-        "max_iterations": max_iterations,
+        "max_iterations": safe_iterations,
         "pr_url": None,
         "logs": [],
     }
@@ -57,42 +106,7 @@ async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
     try:
         async for output in daedalus_app.astream(initial_state):
             for node_name, state_update in output.items():
-                latest_log = ""
-                if "logs" in state_update and state_update["logs"]:
-                    latest_log = state_update["logs"][-1]
-
-                # Format payload with node-specific metadata for the UI
-                payload: Dict[str, Any] = {
-                    "step": node_name.upper(),
-                    "message": latest_log or f"Executed node: {node_name}",
-                    "iteration": state_update.get("iteration", 0),
-                }
-
-                # Attach specific artifacts when available
-                if node_name == "planner" and "plan" in state_update and state_update["plan"]:
-                    payload["data"] = {
-                        "epic_title": state_update["plan"].epic_title,
-                        "task_count": len(state_update["plan"].tasks),
-                    }
-                elif node_name == "developer" and "code_patch" in state_update and state_update["code_patch"]:
-                    payload["data"] = {
-                        "summary": state_update["code_patch"].summary,
-                        "file_count": len(state_update["code_patch"].files),
-                    }
-                elif node_name == "tester" and "test_output" in state_update and state_update["test_output"]:
-                    payload["data"] = {
-                        "passed": state_update["test_output"].get("passed", False),
-                        "stdout": state_update["test_output"].get("stdout", ""),
-                    }
-                elif node_name == "reviewer" and "review" in state_update and state_update["review"]:
-                    payload["data"] = {
-                        "root_cause": state_update["review"].root_cause,
-                    }
-                elif node_name == "github_pr" and "pr_url" in state_update and state_update["pr_url"]:
-                    payload["data"] = {
-                        "pr_url": state_update["pr_url"],
-                    }
-
+                payload = _build_event_payload(node_name, state_update)
                 await event_queue.put(payload)
 
         await event_queue.put({
@@ -153,4 +167,4 @@ async def serve_index() -> str:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)

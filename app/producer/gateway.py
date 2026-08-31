@@ -33,7 +33,7 @@ class LLMGateway:
             else None
         )
 
-    def _offline_fallback(self, schema: Type[T], prompt: str) -> T:
+    def _offline_fallback(self, schema: Type[T]) -> T:
         """Guarantees a valid Pydantic response even when offline/out of credits."""
         if schema is TaskBreakdown:
             return TaskBreakdown(
@@ -93,7 +93,7 @@ class LLMGateway:
     async def _fallback_groq(self, prompt: str, schema: Type[T]) -> T:
         if not self.groq_key or _is_placeholder(self.groq_key):
             print("[Gateway Warning] GROQ_API_KEY is not configured. Utilizing offline fallback.")
-            return self._offline_fallback(schema, prompt)
+            return self._offline_fallback(schema)
 
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
@@ -122,4 +122,4 @@ class LLMGateway:
                 return schema.model_validate_json(content)
         except Exception as exc:
             print(f"[Gateway Warning] Groq fallback failed: {exc}. Utilizing offline fallback.")
-            return self._offline_fallback(schema, prompt)
+            return self._offline_fallback(schema)

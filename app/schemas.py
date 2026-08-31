@@ -19,11 +19,12 @@ class AgentState(TypedDict):
     plan: Optional[TaskBreakdown]
     code_patch: Optional[CodePatch]
     test_output: Optional[Dict[str, str]]
-    review: Optional[ReviewResult]
+    review: Optional[str]  # Changed from ReviewResult to str (holds failure summary from analyze_failure)
     iteration: int
     max_iterations: int
     pr_url: Optional[str]
     logs: List[str]
+    research_context: Optional[str] = None  # Added to track research results from researcher node
 
 class TaskItem(BaseModel):
     id: str
