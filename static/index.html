@@ -1,156 +1,340 @@
-from __future__ import annotations
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DaedalusOS — Autonomous AI Engineering Team</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+              950: '#0f172a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-mono flex flex-col p-6 selection:bg-indigo-500 selection:text-white">
+  <div class="max-w-6xl w-full mx-auto space-y-6 flex-1 flex flex-col">
+    
+    <!-- Top Header -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-4 gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">⚡</span>
+          <h1 class="text-2xl font-bold tracking-tight text-indigo-400">DaedalusOS</h1>
+          <span class="bg-indigo-950 border border-indigo-700/50 text-indigo-300 text-xs px-2.5 py-0.5 rounded-full uppercase tracking-wider font-semibold">Autonomous Core</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">Self-Healing Multi-Agent Engineering Engine & Verification Sandbox</p>
+      </div>
 
-import asyncio
-import json
-from pathlib import Path
-from typing import Any, AsyncGenerator, Dict
+      <!-- Execution Status Pill -->
+      <div id="statusPill" class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs self-start md:self-auto">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="statusText" class="text-slate-300 font-medium">Ready</span>
+      </div>
+    </header>
 
-from fastapi import BackgroundTasks, FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from starlette.responses import StreamingResponse
+    <!-- Prompt Input Form -->
+    <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 shadow-xl backdrop-blur">
+      <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Product Requirement / Feature Specification</label>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input 
+          id="promptInput" 
+          type="text" 
+          value="Build an in-memory token bucket rate limiter with FastAPI middleware and pytest tests."
+          placeholder="Describe feature, API endpoints, or database requirements..." 
+          class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition text-slate-200"
+        />
+        <button 
+          id="runBtn" 
+          onclick="startExecution()" 
+          class="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm px-6 py-2.5 rounded-lg transition shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
+        >
+          <span>Dispatch Agents</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
+      </div>
+    </div>
 
-from app.graph import daedalus_app
-from app.schemas import AgentState
+    <!-- Agent Kanban State Pipeline -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      
+      <!-- Card: Planner -->
+      <div id="card-planner" class="state-card bg-slate-900/40 border border-slate-800 rounded-lg p-3 transition-all">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <span>01. PLANNER</span>
+          <span class="indicator w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </div>
+        <div class="text-sm font-semibold text-slate-200 status-label">Idle</div>
+        <div class="text-[10px] text-slate-500 mt-1 truncate detail-text">Awaiting prompt</div>
+      </div>
 
-app = FastAPI(title="DaedalusOS Engine", version="1.0.0")
+      <!-- Card: Researcher -->
+      <div id="card-researcher" class="state-card bg-slate-900/40 border border-slate-800 rounded-lg p-3 transition-all">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <span>02. RESEARCH</span>
+          <span class="indicator w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </div>
+        <div class="text-sm font-semibold text-slate-200 status-label">Idle</div>
+        <div class="text-[10px] text-slate-500 mt-1 truncate detail-text">Qdrant vector RAG</div>
+      </div>
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+      <!-- Card: Developer -->
+      <div id="card-developer" class="state-card bg-slate-900/40 border border-slate-800 rounded-lg p-3 transition-all">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <span>03. DEVELOP</span>
+          <span class="indicator w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </div>
+        <div class="text-sm font-semibold text-slate-200 status-label">Idle</div>
+        <div class="text-[10px] text-slate-500 mt-1 truncate detail-text">Code synthesis</div>
+      </div>
 
-# In-memory queue to broadcast live events to the SSE listener
-event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+      <!-- Card: Sandbox Tester -->
+      <div id="card-tester" class="state-card bg-slate-900/40 border border-slate-800 rounded-lg p-3 transition-all">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <span>04. TESTER</span>
+          <span class="indicator w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </div>
+        <div class="text-sm font-semibold text-slate-200 status-label">Idle</div>
+        <div class="text-[10px] text-slate-500 mt-1 truncate detail-text">Pytest execution</div>
+      </div>
 
+      <!-- Card: Reviewer -->
+      <div id="card-reviewer" class="state-card bg-slate-900/40 border border-slate-800 rounded-lg p-3 transition-all">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <span>05. REVIEW</span>
+          <span class="indicator w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </div>
+        <div class="text-sm font-semibold text-slate-200 status-label">Idle</div>
+        <div class="text-[10px] text-slate-500 mt-1 truncate detail-text">Traceback analysis</div>
+      </div>
 
-class RunRequest(BaseModel):
-    prompt: str
-    max_iterations: int = 3
+      <!-- Card: Auto-Healer -->
+      <div id="card-healer" class="state-card bg-slate-900/40 border border-slate-800 rounded-lg p-3 transition-all">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <span>06. HEALER</span>
+          <span class="indicator w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </div>
+        <div class="text-sm font-semibold text-slate-200 status-label">Idle</div>
+        <div class="text-[10px] text-slate-500 mt-1 truncate detail-text">Self-patch loop</div>
+      </div>
 
+      <!-- Card: GitHub PR -->
+      <div id="card-github_pr" class="state-card bg-slate-900/40 border border-slate-800 rounded-lg p-3 transition-all">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+          <span>07. DELIVER</span>
+          <span class="indicator w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+        </div>
+        <div class="text-sm font-semibold text-slate-200 status-label">Idle</div>
+        <div class="text-[10px] text-slate-500 mt-1 truncate detail-text">PR automation</div>
+      </div>
 
-async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
-    """Executes the compiled LangGraph pipeline and feeds updates into the event queue."""
-    initial_state: AgentState = {
-        "prompt": prompt,
-        "plan": None,
-        "code_patch": None,
-        "test_output": None,
-        "review": None,
-        "iteration": 0,
-        "max_iterations": max_iterations,
-        "pr_url": None,
-        "logs": [],
+    </div>
+
+    <!-- Live Execution Telemetry & Terminal Console -->
+    <div class="flex-1 flex flex-col bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+      
+      <!-- Terminal Bar -->
+      <div class="bg-slate-950 px-4 py-2.5 border-b border-slate-800 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+          <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+          <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+          <span class="text-slate-400 ml-2 font-mono">daedalus@sandbox-runner: ~/workspace</span>
+        </div>
+        <div id="cycleCounter" class="text-slate-400">Iterations: 0/3</div>
+      </div>
+
+      <!-- Terminal Output Window -->
+      <div id="terminal" class="flex-1 p-4 space-y-2 overflow-y-auto text-xs leading-relaxed max-h-[360px]">
+        <div class="text-slate-500">[SYSTEM] Ready for command dispatch. Enter a requirement above.</div>
+      </div>
+
+      <!-- PR Link Banner (Hidden until delivered) -->
+      <div id="prBanner" class="hidden bg-indigo-950/80 border-t border-indigo-500/30 p-3 px-4 flex items-center justify-between">
+        <div class="flex items-center gap-2 text-xs text-indigo-200">
+          <span>🚀</span>
+          <span>Pull Request delivered successfully!</span>
+        </div>
+        <a id="prLink" href="#" target="_blank" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3 py-1.5 rounded transition inline-flex items-center gap-1">
+          <span>View on GitHub</span>
+          <span>&rarr;</span>
+        </a>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    let eventSource = null;
+
+    const ALL_NODES = ['planner', 'researcher', 'developer', 'tester', 'reviewer', 'healer', 'github_pr'];
+
+    function resetUI() {
+      ALL_NODES.forEach(node => {
+        const card = document.getElementById(`card-${node}`);
+        if (!card) return;
+        card.className = "state-card bg-slate-900/40 border border-slate-800 rounded-lg p-3 transition-all";
+        card.querySelector('.status-label').textContent = "Idle";
+        card.querySelector('.status-label').className = "text-sm font-semibold text-slate-200 status-label";
+        card.querySelector('.indicator').className = "indicator w-1.5 h-1.5 rounded-full bg-slate-600";
+      });
+
+      document.getElementById('prBanner').classList.add('hidden');
+      document.getElementById('cycleCounter').textContent = "Iterations: 0/3";
+      document.getElementById('statusText').textContent = "Executing...";
+      document.getElementById('statusPill').querySelector('span').className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
     }
 
-    await event_queue.put({
-        "step": "INITIALIZED",
-        "message": f"Engine initialized for requirement: '{prompt}'",
-        "data": {}
-    })
+    function updateCard(nodeKey, status, detail = "") {
+      const card = document.getElementById(`card-${nodeKey.toLowerCase()}`);
+      if (!card) return;
 
-    try:
-        async for output in daedalus_app.astream(initial_state):
-            for node_name, state_update in output.items():
-                latest_log = ""
-                if "logs" in state_update and state_update["logs"]:
-                    latest_log = state_update["logs"][-1]
+      const label = card.querySelector('.status-label');
+      const indicator = card.querySelector('.indicator');
+      const detailEl = card.querySelector('.detail-text');
 
-                # Format payload with node-specific metadata for the UI
-                payload: Dict[str, Any] = {
-                    "step": node_name.upper(),
-                    "message": latest_log or f"Executed node: {node_name}",
-                    "iteration": state_update.get("iteration", 0),
+      if (detail) detailEl.textContent = detail;
+
+      if (status === 'RUNNING') {
+        card.className = "state-card bg-indigo-950/40 border border-indigo-500/60 rounded-lg p-3 transition-all shadow-lg shadow-indigo-500/10";
+        label.textContent = "Running";
+        label.className = "text-sm font-semibold text-indigo-400 status-label";
+        indicator.className = "indicator w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse";
+      } else if (status === 'PASSED' || status === 'COMPLETED') {
+        card.className = "state-card bg-emerald-950/30 border border-emerald-500/40 rounded-lg p-3 transition-all";
+        label.textContent = "Done";
+        label.className = "text-sm font-semibold text-emerald-400 status-label";
+        indicator.className = "indicator w-1.5 h-1.5 rounded-full bg-emerald-400";
+      } else if (status === 'FAILED') {
+        card.className = "state-card bg-rose-950/30 border border-rose-500/40 rounded-lg p-3 transition-all";
+        label.textContent = "Failed";
+        label.className = "text-sm font-semibold text-rose-400 status-label";
+        indicator.className = "indicator w-1.5 h-1.5 rounded-full bg-rose-400";
+      }
+    }
+
+    function appendTerminal(step, message, isError = false) {
+      const term = document.getElementById('terminal');
+      const row = document.createElement('div');
+      row.className = "flex gap-2 items-start";
+
+      const time = new Date().toLocaleTimeString();
+      const color = isError ? "text-rose-400" : (step === "COMPLETE" ? "text-emerald-400" : "text-indigo-400");
+
+      row.innerHTML = `
+        <span class="text-slate-600 select-none">[${time}]</span>
+        <span class="${color} font-bold select-none">[${step}]</span>
+        <span class="text-slate-300 flex-1 break-words">${message}</span>
+      `;
+
+      term.appendChild(row);
+      term.scrollTop = term.scrollHeight;
+    }
+
+    async function startExecution() {
+      const prompt = document.getElementById('promptInput').value.trim();
+      if (!prompt) return;
+
+      const runBtn = document.getElementById('runBtn');
+      runBtn.disabled = true;
+      runBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      resetUI();
+      appendTerminal("SYSTEM", `Dispatched requirement to LangGraph: "${prompt}"`);
+
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      try {
+        await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, max_iterations: 3 })
+        });
+
+        eventSource = new EventSource('/api/events');
+
+        eventSource.onmessage = function (e) {
+          const payload = JSON.parse(e.data);
+          const step = payload.step;
+          const nodeKey = step.toLowerCase();
+
+          appendTerminal(step, payload.message);
+
+          if (payload.iteration !== undefined) {
+            document.getElementById('cycleCounter').textContent = `Iterations: ${payload.iteration}/3`;
+          }
+
+          if (ALL_NODES.includes(nodeKey)) {
+            ALL_NODES.forEach(n => {
+              if (n !== nodeKey) {
+                const c = document.getElementById(`card-${n}`);
+                if (c && c.querySelector('.status-label').textContent === "Running") {
+                  updateCard(n, 'COMPLETED');
                 }
+              }
+            });
+            updateCard(nodeKey, 'RUNNING');
+          }
 
-                # Attach specific artifacts when available
-                if node_name == "planner" and "plan" in state_update and state_update["plan"]:
-                    payload["data"] = {
-                        "epic_title": state_update["plan"].epic_title,
-                        "task_count": len(state_update["plan"].tasks),
-                    }
-                elif node_name == "developer" and "code_patch" in state_update and state_update["code_patch"]:
-                    payload["data"] = {
-                        "summary": state_update["code_patch"].summary,
-                        "file_count": len(state_update["code_patch"].files),
-                    }
-                elif node_name == "tester" and "test_output" in state_update and state_update["test_output"]:
-                    payload["data"] = {
-                        "passed": state_update["test_output"].get("passed", False),
-                        "stdout": state_update["test_output"].get("stdout", ""),
-                    }
-                elif node_name == "reviewer" and "review" in state_update and state_update["review"]:
-                    payload["data"] = {
-                        "root_cause": state_update["review"].root_cause,
-                    }
-                elif node_name == "github_pr" and "pr_url" in state_update and state_update["pr_url"]:
-                    payload["data"] = {
-                        "pr_url": state_update["pr_url"],
-                    }
+          if (nodeKey === 'tester' && payload.data && payload.data.passed !== undefined) {
+            updateCard('tester', payload.data.passed ? 'PASSED' : 'FAILED', payload.data.passed ? "Pytest: 100% Passed" : "Pytest: Assert Error");
+          }
 
-                await event_queue.put(payload)
+          if (nodeKey === 'github_pr' && payload.data && payload.data.pr_url) {
+            updateCard('github_pr', 'PASSED', 'PR Published');
+            const prBanner = document.getElementById('prBanner');
+            const prLink = document.getElementById('prLink');
+            prLink.href = payload.data.pr_url;
+            prBanner.classList.remove('hidden');
+          }
 
-        await event_queue.put({
-            "step": "COMPLETE",
-            "message": "Workflow completed successfully.",
-            "data": {}
-        })
+          if (step === 'COMPLETE' || step === 'ERROR') {
+            eventSource.close();
+            runBtn.disabled = false;
+            runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
 
-    except Exception as exc:
-        await event_queue.put({
-            "step": "ERROR",
-            "message": f"Pipeline execution failed: {str(exc)}",
-            "data": {"error": str(exc)}
-        })
+            const statusPill = document.getElementById('statusPill');
+            const statusText = document.getElementById('statusText');
+            if (step === 'COMPLETE') {
+              statusText.textContent = "Finished";
+              statusPill.querySelector('span').className = "w-2 h-2 rounded-full bg-emerald-400";
+            } else {
+              statusText.textContent = "Error";
+              statusPill.querySelector('span').className = "w-2 h-2 rounded-full bg-rose-400";
+            }
+          }
+        };
 
+        eventSource.onerror = function () {
+          eventSource.close();
+          runBtn.disabled = false;
+          runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          document.getElementById('statusText').textContent = "Disconnected";
+        };
 
-@app.post("/api/run")
-async def trigger_run(req: RunRequest, background_tasks: BackgroundTasks) -> Dict[str, str]:
-    """Starts the LangGraph execution in a non-blocking background task."""
-    background_tasks.add_task(run_agent_workflow, req.prompt, req.max_iterations)
-    return {"status": "started", "prompt": req.prompt}
-
-
-@app.get("/api/events")
-async def stream_events() -> StreamingResponse:
-    """Streams server-sent events (SSE) continuously to the browser UI."""
-    async def event_generator() -> AsyncGenerator[str, None]:
-        while True:
-            data = await event_queue.get()
-            yield f"data: {json.dumps(data)}\n\n"
-            if data.get("step") in {"COMPLETE", "ERROR"}:
-                break
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        }
-    )
-
-
-# Mount static files and serve the single-file UI
-static_dir = Path(__file__).resolve().parent.parent / "static"
-static_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-
-
-@app.get("/", response_class=HTMLResponse)
-async def serve_index() -> str:
-    index_file = static_dir / "index.html"
-    if not index_file.exists():
-        return "<h1>Static index.html not found in /static directory</h1>"
-    return index_file.read_text(encoding="utf-8")
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+      } catch (err) {
+        appendTerminal("ERROR", `Failed to initiate run: ${err}`, true);
+        runBtn.disabled = false;
+        runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+  </script>
+</body>
+</html>
