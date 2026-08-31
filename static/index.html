@@ -1,134 +1,156 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DaedalusOS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
-    <div class="mx-auto max-w-4xl px-6 py-10">
-      <header class="mb-6 border-b border-slate-800 pb-4">
-        <h1 class="text-3xl font-bold text-indigo-400">DaedalusOS</h1>
-        <p class="mt-1 text-sm text-slate-400">Autonomous engineering workflow</p>
-      </header>
+from __future__ import annotations
 
-      <div class="space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-2xl shadow-slate-950/40">
-        <label for="promptInput" class="block text-sm font-medium text-slate-300">Requirement</label>
-        <textarea
-          id="promptInput"
-          rows="4"
-          class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
-          placeholder="Describe the task to run through the agents..."
-        ></textarea>
+import asyncio
+import json
+from pathlib import Path
+from typing import Any, AsyncGenerator, Dict
 
-        <div class="flex justify-end">
-          <button
-            id="runButton"
-            type="button"
-            class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-700"
-          >
-            Run Agents
-          </button>
-        </div>
-      </div>
+from fastapi import BackgroundTasks, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from starlette.responses import StreamingResponse
 
-      <div class="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
-        <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-300">Live log</h2>
-          <span id="statusBadge" class="rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] uppercase tracking-wide text-slate-300">Idle</span>
-        </div>
-        <pre id="logPanel" class="h-80 overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-sm leading-6 text-slate-200">[SYSTEM] Waiting for a requirement...</pre>
-      </div>
-    </div>
+from app.graph import daedalus_app
+from app.schemas import AgentState
 
-    <script>
-      const promptInput = document.getElementById('promptInput');
-      const runButton = document.getElementById('runButton');
-      const logPanel = document.getElementById('logPanel');
-      const statusBadge = document.getElementById('statusBadge');
+app = FastAPI(title="DaedalusOS Engine", version="1.0.0")
 
-      let isRunning = false;
-      let eventSource = null;
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-      function appendLog(line) {
-        logPanel.textContent += (logPanel.textContent.endsWith('\n') || logPanel.textContent === '' ? '' : '\n') + line;
-        logPanel.scrollTop = logPanel.scrollHeight;
-      }
+# In-memory queue to broadcast live events to the SSE listener
+event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
 
-      function setRunning(running) {
-        isRunning = running;
-        runButton.disabled = running;
-        runButton.textContent = running ? 'Running...' : 'Run Agents';
-        statusBadge.textContent = running ? 'Running' : 'Idle';
-        statusBadge.className = running
-          ? 'rounded-full border border-indigo-500/40 bg-indigo-500/10 px-2 py-1 text-[10px] uppercase tracking-wide text-indigo-300'
-          : 'rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] uppercase tracking-wide text-slate-300';
-      }
 
-      async function startExecution() {
-        if (isRunning) return;
+class RunRequest(BaseModel):
+    prompt: str
+    max_iterations: int = 3
 
-        const prompt = promptInput.value.trim();
-        if (!prompt) {
-          appendLog('[SYSTEM] Please enter a requirement before running the agents.');
-          promptInput.focus();
-          return;
+
+async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
+    """Executes the compiled LangGraph pipeline and feeds updates into the event queue."""
+    initial_state: AgentState = {
+        "prompt": prompt,
+        "plan": None,
+        "code_patch": None,
+        "test_output": None,
+        "review": None,
+        "iteration": 0,
+        "max_iterations": max_iterations,
+        "pr_url": None,
+        "logs": [],
+    }
+
+    await event_queue.put({
+        "step": "INITIALIZED",
+        "message": f"Engine initialized for requirement: '{prompt}'",
+        "data": {}
+    })
+
+    try:
+        async for output in daedalus_app.astream(initial_state):
+            for node_name, state_update in output.items():
+                latest_log = ""
+                if "logs" in state_update and state_update["logs"]:
+                    latest_log = state_update["logs"][-1]
+
+                # Format payload with node-specific metadata for the UI
+                payload: Dict[str, Any] = {
+                    "step": node_name.upper(),
+                    "message": latest_log or f"Executed node: {node_name}",
+                    "iteration": state_update.get("iteration", 0),
+                }
+
+                # Attach specific artifacts when available
+                if node_name == "planner" and "plan" in state_update and state_update["plan"]:
+                    payload["data"] = {
+                        "epic_title": state_update["plan"].epic_title,
+                        "task_count": len(state_update["plan"].tasks),
+                    }
+                elif node_name == "developer" and "code_patch" in state_update and state_update["code_patch"]:
+                    payload["data"] = {
+                        "summary": state_update["code_patch"].summary,
+                        "file_count": len(state_update["code_patch"].files),
+                    }
+                elif node_name == "tester" and "test_output" in state_update and state_update["test_output"]:
+                    payload["data"] = {
+                        "passed": state_update["test_output"].get("passed", False),
+                        "stdout": state_update["test_output"].get("stdout", ""),
+                    }
+                elif node_name == "reviewer" and "review" in state_update and state_update["review"]:
+                    payload["data"] = {
+                        "root_cause": state_update["review"].root_cause,
+                    }
+                elif node_name == "github_pr" and "pr_url" in state_update and state_update["pr_url"]:
+                    payload["data"] = {
+                        "pr_url": state_update["pr_url"],
+                    }
+
+                await event_queue.put(payload)
+
+        await event_queue.put({
+            "step": "COMPLETE",
+            "message": "Workflow completed successfully.",
+            "data": {}
+        })
+
+    except Exception as exc:
+        await event_queue.put({
+            "step": "ERROR",
+            "message": f"Pipeline execution failed: {str(exc)}",
+            "data": {"error": str(exc)}
+        })
+
+
+@app.post("/api/run")
+async def trigger_run(req: RunRequest, background_tasks: BackgroundTasks) -> Dict[str, str]:
+    """Starts the LangGraph execution in a non-blocking background task."""
+    background_tasks.add_task(run_agent_workflow, req.prompt, req.max_iterations)
+    return {"status": "started", "prompt": req.prompt}
+
+
+@app.get("/api/events")
+async def stream_events() -> StreamingResponse:
+    """Streams server-sent events (SSE) continuously to the browser UI."""
+    async def event_generator() -> AsyncGenerator[str, None]:
+        while True:
+            data = await event_queue.get()
+            yield f"data: {json.dumps(data)}\n\n"
+            if data.get("step") in {"COMPLETE", "ERROR"}:
+                break
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
         }
+    )
 
-        setRunning(true);
-        logPanel.textContent = '';
-        appendLog('[SYSTEM] Dispatching requirement: ' + prompt);
 
-        if (eventSource) {
-          eventSource.close();
-          eventSource = null;
-        }
+# Mount static files and serve the single-file UI
+static_dir = Path(__file__).resolve().parent.parent / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-        try {
-          const response = await fetch('/api/run', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt })
-          });
 
-          if (!response.ok) {
-            throw new Error('POST /api/run failed: ' + response.status);
-          }
+@app.get("/", response_class=HTMLResponse)
+async def serve_index() -> str:
+    index_file = static_dir / "index.html"
+    if not index_file.exists():
+        return "<h1>Static index.html not found in /static directory</h1>"
+    return index_file.read_text(encoding="utf-8")
 
-          const payload = await response.json();
-          appendLog('[SYSTEM] POST /api/run response: ' + JSON.stringify(payload));
-        } catch (error) {
-          appendLog('[ERROR] ' + error.message);
-          setRunning(false);
-          return;
-        }
 
-        eventSource = new EventSource('/api/events');
-
-        eventSource.onmessage = function (event) {
-          const payload = JSON.parse(event.data);
-          appendLog('[' + payload.step + '] ' + (payload.message || ''));
-
-          if (payload.step === 'COMPLETE') {
-            eventSource.close();
-            eventSource = null;
-            appendLog('[SYSTEM] Terminal event received. Run finished.');
-            setRunning(false);
-          }
-        };
-
-        eventSource.onerror = function () {
-          appendLog('[SYSTEM] Event stream closed.');
-          if (eventSource) {
-            eventSource.close();
-            eventSource = null;
-          }
-          setRunning(false);
-        };
-      }
-
-      runButton.addEventListener('click', startExecution);
-    </script>
-  </body>
-</html>
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -1,128 +1,155 @@
+from __future__ import annotations
+
 import asyncio
 import json
-from typing import Any
+from pathlib import Path
+from typing import Any, AsyncGenerator, Dict
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import BackgroundTasks, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import StreamingResponse
 from pydantic import BaseModel
+from starlette.responses import StreamingResponse
 
-app = FastAPI(title="DaedalusOS Engine")
+from app.graph import daedalus_app
+from app.schemas import AgentState
+
+app = FastAPI(title="DaedalusOS Engine", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# In-memory queue for streaming real-time events to the UI
-event_queue: asyncio.Queue = asyncio.Queue()
+# In-memory queue to broadcast live events to the SSE listener
+event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+
 
 class RunRequest(BaseModel):
     prompt: str
+    max_iterations: int = 3
 
 
-async def _emit_event(step: str, status: str, message: str | None = None, **extra: Any):
-    payload: dict[str, Any] = {"step": step, "status": status}
-    if message is not None:
-        payload["message"] = message
-    payload.update(extra)
-    await event_queue.put(payload)
-
-
-async def _run_real_workflow(prompt_text: str):
-    """Run the actual graph workflow and emit the live state updates as SSE events."""
-    try:
-        from app.graph import daedalus_engine
-    except Exception as exc:  # pragma: no cover - fallback if graph import fails
-        await _emit_event("ERROR", "error", f"Workflow import failed: {exc}")
-        return
-
-    initial_state = {
-        "prompt": prompt_text,
+async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
+    """Executes the compiled LangGraph pipeline and feeds updates into the event queue."""
+    initial_state: AgentState = {
+        "prompt": prompt,
         "plan": None,
         "code_patch": None,
         "test_output": None,
         "review": None,
         "iteration": 0,
-        "max_iterations": 3,
+        "max_iterations": max_iterations,
         "pr_url": None,
         "logs": [],
     }
 
-    latest_state = initial_state
-    try:
-        async for state_update in daedalus_engine.astream(initial_state):
-            for node_name, partial_state in state_update.items():
-                latest_state = partial_state
-                if node_name == "reviewer":
-                    review = partial_state.get("review")
-                    status = "analyzed" if review else "skipped"
-                    await _emit_event(
-                        node_name,
-                        status,
-                        "Failure summary analyzed" if review else "No failure summary produced",
-                        review=review,
-                    )
-                elif node_name == "tester":
-                    test_output = partial_state.get("test_output") or {}
-                    await _emit_event(
-                        node_name,
-                        "passed" if test_output.get("passed") else "failed",
-                        "Test execution completed",
-                        test_output=test_output,
-                    )
-                elif node_name == "github_pr":
-                    await _emit_event(
-                        node_name,
-                        "done" if partial_state.get("pr_url") else "skipped",
-                        "PR workflow complete",
-                        pr_url=partial_state.get("pr_url"),
-                    )
-                else:
-                    await _emit_event(node_name, "done", f"{node_name} node completed")
+    await event_queue.put({
+        "step": "INITIALIZED",
+        "message": f"Engine initialized for requirement: '{prompt}'",
+        "data": {}
+    })
 
-        final_test_output = latest_state.get("test_output") or {}
-        success = bool(final_test_output.get("passed")) or bool(latest_state.get("pr_url"))
-        await _emit_event(
-            "COMPLETE",
-            "done" if success else "failed",
-            "Workflow complete" if success else "Workflow ended without success criteria",
-        )
+    try:
+        async for output in daedalus_app.astream(initial_state):
+            for node_name, state_update in output.items():
+                latest_log = ""
+                if "logs" in state_update and state_update["logs"]:
+                    latest_log = state_update["logs"][-1]
+
+                # Format payload with node-specific metadata for the UI
+                payload: Dict[str, Any] = {
+                    "step": node_name.upper(),
+                    "message": latest_log or f"Executed node: {node_name}",
+                    "iteration": state_update.get("iteration", 0),
+                }
+
+                # Attach specific artifacts when available
+                if node_name == "planner" and "plan" in state_update and state_update["plan"]:
+                    payload["data"] = {
+                        "epic_title": state_update["plan"].epic_title,
+                        "task_count": len(state_update["plan"].tasks),
+                    }
+                elif node_name == "developer" and "code_patch" in state_update and state_update["code_patch"]:
+                    payload["data"] = {
+                        "summary": state_update["code_patch"].summary,
+                        "file_count": len(state_update["code_patch"].files),
+                    }
+                elif node_name == "tester" and "test_output" in state_update and state_update["test_output"]:
+                    payload["data"] = {
+                        "passed": state_update["test_output"].get("passed", False),
+                        "stdout": state_update["test_output"].get("stdout", ""),
+                    }
+                elif node_name == "reviewer" and "review" in state_update and state_update["review"]:
+                    payload["data"] = {
+                        "root_cause": state_update["review"].root_cause,
+                    }
+                elif node_name == "github_pr" and "pr_url" in state_update and state_update["pr_url"]:
+                    payload["data"] = {
+                        "pr_url": state_update["pr_url"],
+                    }
+
+                await event_queue.put(payload)
+
+        await event_queue.put({
+            "step": "COMPLETE",
+            "message": "Workflow completed successfully.",
+            "data": {}
+        })
+
     except Exception as exc:
-        import traceback
-        traceback.print_exc()
-        await _emit_event("ERROR", "error", str(exc))
+        await event_queue.put({
+            "step": "ERROR",
+            "message": f"Pipeline execution failed: {str(exc)}",
+            "data": {"error": str(exc)}
+        })
 
 
 @app.post("/api/run")
-async def trigger_run(req: RunRequest, background_tasks: BackgroundTasks):
-    """Triggers the agent workflow in the background and sends events to the UI."""
-    background_tasks.add_task(_run_real_workflow, req.prompt)
+async def trigger_run(req: RunRequest, background_tasks: BackgroundTasks) -> Dict[str, str]:
+    """Starts the LangGraph execution in a non-blocking background task."""
+    background_tasks.add_task(run_agent_workflow, req.prompt, req.max_iterations)
     return {"status": "started", "prompt": req.prompt}
 
+
 @app.get("/api/events")
-async def stream_events():
-    """Streams live events to the frontend via HTTP Server-Sent Events (SSE)."""
-    async def event_generator():
+async def stream_events() -> StreamingResponse:
+    """Streams server-sent events (SSE) continuously to the browser UI."""
+    async def event_generator() -> AsyncGenerator[str, None]:
         while True:
             data = await event_queue.get()
             yield f"data: {json.dumps(data)}\n\n"
-            if data.get("step") == "COMPLETE":
+            if data.get("step") in {"COMPLETE", "ERROR"}:
                 break
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
-# Serve the static UI dashboard
-app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Mount static files and serve the single-file UI
+static_dir = Path(__file__).resolve().parent.parent / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
 
 @app.get("/", response_class=HTMLResponse)
-async def serve_index():
-    with open("static/index.html", "r", encoding="utf-8") as f:
-        return f.read()
+async def serve_index() -> str:
+    index_file = static_dir / "index.html"
+    if not index_file.exists():
+        return "<h1>Static index.html not found in /static directory</h1>"
+    return index_file.read_text(encoding="utf-8")
+
 
 if __name__ == "__main__":
     import uvicorn
