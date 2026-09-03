@@ -61,7 +61,6 @@ Generate all necessary source code files and comprehensive pytest suites.
         return await self.gateway.generate_structured(
             prompt=user_prompt,
             schema=CodePatch,
-            model="gemini-2.0-flash"
         )
 
 

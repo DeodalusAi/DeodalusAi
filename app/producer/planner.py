@@ -40,7 +40,6 @@ Analyze the requirement and generate the complete architecture overview and task
         return await self.gateway.generate_structured(
             prompt=user_prompt,
             schema=TaskBreakdown,
-            model="gemini-2.0-flash"
         )
 
 

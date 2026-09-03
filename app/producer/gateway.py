@@ -27,6 +27,9 @@ class LLMGateway:
     def __init__(self):
         self.gemini_key = os.getenv("GEMINI_API_KEY")
         self.groq_key = os.getenv("GROQ_API_KEY")
+        self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+        self.groq_model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        self.groq_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1/chat/completions")
         self.gemini_client = (
             genai.Client(api_key=self.gemini_key)
             if self.gemini_key and not _is_placeholder(self.gemini_key)
@@ -71,12 +74,12 @@ class LLMGateway:
 
         return schema.model_validate({})
 
-    async def generate_structured(self, prompt: str, schema: Type[T], model: str = "gemini-2.0-flash") -> T:
-        """Primary: Gemini 2.0 Flash -> Secondary: Groq Llama-3.3 -> Tertiary: Offline Mock"""
+    async def generate_structured(self, prompt: str, schema: Type[T], model: str | None = None) -> T:
+        """Primary: Gemini -> Secondary: Groq -> Tertiary: Offline Mock."""
         if self.gemini_client:
             try:
                 response = self.gemini_client.models.generate_content(
-                    model=model,
+                    model=model or self.gemini_model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
@@ -95,13 +98,12 @@ class LLMGateway:
             print("[Gateway Warning] GROQ_API_KEY is not configured. Utilizing offline fallback.")
             return self._offline_fallback(schema)
 
-        url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.groq_key}",
             "Content-Type": "application/json",
         }
         payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": self.groq_model,
             "messages": [
                 {
                     "role": "system",
@@ -115,7 +117,7 @@ class LLMGateway:
 
         try:
             async with httpx.AsyncClient(timeout=45.0) as client:
-                resp = await client.post(url, json=payload, headers=headers)
+                resp = await client.post(self.groq_url, json=payload, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
                 content = data["choices"][0]["message"]["content"]
