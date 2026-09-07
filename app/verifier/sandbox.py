@@ -1,6 +1,7 @@
 import shutil
 import subprocess
 import sys
+import os
 from pathlib import Path
 
 from app.schemas import CodePatch, FilePatch
@@ -22,9 +23,11 @@ class SandboxRunner:
         written: list[str] = []
         files = getattr(patch, "files", [])
         for file_spec in files:
-            target = self.workspace / file_spec.path
-            # Known risk: path traversal such as ../../etc/passwd is not blocked here; a
-            # hardened version should reject absolute or parent-directory paths before writing.
+            relative_path = Path(file_spec.path)
+            target = (self.workspace / relative_path).resolve()
+            workspace_root = self.workspace.resolve()
+            if relative_path.is_absolute() or workspace_root not in target.parents:
+                raise ValueError(f"Patch path escapes sandbox workspace: {file_spec.path}")
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(file_spec.content, encoding="utf-8")
             written.append(str(target))
@@ -33,15 +36,20 @@ class SandboxRunner:
     def execute_tests(self, timeout: int = 30) -> dict:
         """Executes pytest directly inside the workspace."""
         commands = [
-            ["pytest", "-v", "--tb=short"],
             [sys.executable, "-m", "pytest", "-v", "--tb=short"],
+            ["pytest", "-v", "--tb=short"],
         ]
+        environment = os.environ.copy()
+        environment.pop("PYTHONPATH", None)
+        environment["PYTHONNOUSERSITE"] = "1"
+        environment["PYTHONPATH"] = str(self.workspace.resolve())
 
         for cmd in commands:
             try:
                 result = subprocess.run(
                     cmd,
                     cwd=str(self.workspace),
+                    env=environment,
                     capture_output=True,
                     text=True,
                     timeout=timeout,

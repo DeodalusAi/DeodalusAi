@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import List
+import re
 
 from pydantic import BaseModel, Field
 from typing import Dict, Optional, TypedDict
@@ -23,6 +24,8 @@ class AgentState(TypedDict):
     iteration: int
     max_iterations: int
     pr_url: Optional[str]
+    target_repo: Optional[str]
+    base_branch: str
     logs: List[str]
     research_context: Optional[str] = None  # Added to track research results from researcher node
 
@@ -47,6 +50,14 @@ class FilePatch(BaseModel):
 class CodePatch(BaseModel):
     summary: str
     files: List[FilePatch] = Field(default_factory=list)
+
+
+class DeliveryResult(BaseModel):
+    repository: str
+    base_branch: str
+    status: str
+    pr_url: Optional[str] = None
+    error: Optional[str] = None
 
 
 __all__ = [

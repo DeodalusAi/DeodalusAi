@@ -87,4 +87,4 @@ def analyze_failure(test_result: dict) -> str:
     if shortlist:
         return "\n".join(shortlist[:12])
 
-    return "\n".join(combined.splitlines()[-12:])
+    return "\n".join(combined.splitlines()[-30:])

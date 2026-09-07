@@ -67,6 +67,12 @@
           </svg>
         </button>
       </div>
+      <div class="flex flex-col sm:flex-row gap-3 mt-3">
+        <input id="repoInput" type="text" placeholder="Target repository: owner/repository (optional)"
+          class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition text-slate-200" />
+        <input id="branchInput" type="text" value="main" placeholder="Base branch"
+          class="sm:w-40 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition text-slate-200" />
+      </div>
     </div>
 
     <!-- Agent Kanban State Pipeline -->
@@ -158,6 +164,16 @@
         <div id="cycleCounter" class="text-slate-400">Iterations: 0/3</div>
       </div>
 
+      <div class="grid md:grid-cols-[220px_1fr] border-t border-slate-800 min-h-[220px]">
+        <div id="fileList" class="p-3 border-b md:border-b-0 md:border-r border-slate-800 text-xs text-slate-400 space-y-1">
+          <div class="text-slate-600">Generated files will appear here.</div>
+        </div>
+        <pre id="fileContent" class="p-4 overflow-auto text-xs leading-relaxed text-slate-300 whitespace-pre-wrap">Select a generated file to inspect its contents.</pre>
+      </div>
+      <div id="changeSummary" class="border-t border-slate-800 p-4 text-xs text-slate-400">
+        Agent changes will appear here after code synthesis.
+      </div>
+
       <!-- Terminal Output Window -->
       <div id="terminal" class="flex-1 p-4 space-y-2 overflow-y-auto text-xs leading-relaxed max-h-[360px]">
         <div class="text-slate-500">[SYSTEM] Ready for command dispatch. Enter a requirement above.</div>
@@ -181,6 +197,7 @@
 
   <script>
     let eventSource = null;
+    const generatedFiles = new Map();
 
     const ALL_NODES = ['planner', 'researcher', 'developer', 'tester', 'reviewer', 'healer', 'github_pr'];
 
@@ -236,10 +253,13 @@
       const time = new Date().toLocaleTimeString();
       const color = isError ? "text-rose-400" : (step === "COMPLETE" ? "text-emerald-400" : "text-indigo-400");
 
+      const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[char]));
       row.innerHTML = `
         <span class="text-slate-600 select-none">[${time}]</span>
-        <span class="${color} font-bold select-none">[${step}]</span>
-        <span class="text-slate-300 flex-1 break-words">${message}</span>
+        <span class="${color} font-bold select-none">[${escapeHtml(step)}]</span>
+        <pre class="text-slate-300 flex-1 break-words whitespace-pre-wrap">${escapeHtml(message)}</pre>
       `;
 
       term.appendChild(row);
@@ -255,6 +275,9 @@
       runBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
       resetUI();
+      generatedFiles.clear();
+      document.getElementById('fileList').innerHTML = '<div class="text-slate-600">Waiting for generated files...</div>';
+      document.getElementById('fileContent').textContent = 'Select a generated file to inspect its contents.';
       appendTerminal("SYSTEM", `Dispatched requirement to LangGraph: "${prompt}"`);
 
       if (eventSource) {
@@ -262,13 +285,17 @@
       }
 
       try {
-        await fetch('/api/run', {
+        const response = await fetch('/api/run', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, max_iterations: 3 })
+          body: JSON.stringify({ prompt, max_iterations: 3,
+            target_repo: document.getElementById('repoInput').value.trim() || null,
+            base_branch: document.getElementById('branchInput').value.trim() || 'main' })
         });
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        const run = await response.json();
 
-        eventSource = new EventSource('/api/events');
+        eventSource = new EventSource(`/api/events?run_id=${encodeURIComponent(run.run_id)}`);
 
         eventSource.onmessage = function (e) {
           const payload = JSON.parse(e.data);
@@ -295,6 +322,22 @@
 
           if (nodeKey === 'tester' && payload.data && payload.data.passed !== undefined) {
             updateCard('tester', payload.data.passed ? 'PASSED' : 'FAILED', payload.data.passed ? "Pytest: 100% Passed" : "Pytest: Assert Error");
+          }
+
+          if (nodeKey === 'developer' && payload.data && payload.data.files) {
+            document.getElementById('changeSummary').textContent = payload.data.summary || 'Code synthesized by Developer.';
+            payload.data.files.forEach(file => {
+              generatedFiles.set(file.path, file.content);
+              appendTerminal('GENERATED', `${file.path}\n${file.content}`);
+            });
+            renderFileList();
+          }
+
+          if (nodeKey === 'healer' && payload.data && payload.data.files) {
+            document.getElementById('changeSummary').textContent = payload.data.summary || 'Code patch revised by Healer.';
+            generatedFiles.clear();
+            payload.data.files.forEach(file => generatedFiles.set(file.path, file.content));
+            renderFileList();
           }
 
           if (nodeKey === 'github_pr' && payload.data && payload.data.pr_url) {
@@ -334,6 +377,18 @@
         runBtn.disabled = false;
         runBtn.classList.remove('opacity-50', 'cursor-not-allowed');
       }
+    }
+
+    function renderFileList() {
+      const list = document.getElementById('fileList');
+      list.innerHTML = '';
+      generatedFiles.forEach((content, path) => {
+        const button = document.createElement('button');
+        button.className = 'block w-full text-left px-2 py-1 rounded hover:bg-slate-800 hover:text-indigo-300';
+        button.textContent = path;
+        button.onclick = () => { document.getElementById('fileContent').textContent = content; };
+        list.appendChild(button);
+      });
     }
   </script>
 </body>

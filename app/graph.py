@@ -4,6 +4,8 @@ from app.schemas import AgentState
 from app.verifier.healer import heal
 from app.verifier.reviewer import analyze_failure
 from app.verifier.sandbox import SandboxRunner
+from app.verifier.github_ops import GitHubOps
+from app.observability.metrics import HEALING_CYCLES, observe_node, record_test_result
 
 # Shared gateway for heal() calls that use the real LLM structure API.
 gateway = LLMGateway()
@@ -29,32 +31,43 @@ except ModuleNotFoundError:
             await asyncio.sleep(0)  # Yield control to make it a proper async function
             return None
 
+planner_agent = PlannerAgent(gateway=gateway)
+researcher_agent = ResearcherAgent(gateway=gateway)
+developer_agent = DeveloperAgent(gateway=gateway)
+
 # Node wrapper functions
+@observe_node("planner")
 async def planner_node(state: AgentState) -> AgentState:
     """Person 1: Plan the epic into tasks"""
-    planner = PlannerAgent()
-    state["plan"] = await planner.plan(state["prompt"])
+    state["plan"] = await planner_agent.plan(state["prompt"])
+    state["logs"].append(f"Plan generated: {state['plan'].epic_title}")
     return state
 
+@observe_node("researcher")
 def researcher_node(state: AgentState) -> AgentState:
     """Person 1: Research architectural context"""
-    researcher = ResearcherAgent()
-    context = researcher.search_context(state["prompt"])
+    context = researcher_agent.search_context(state["prompt"], limit=2)
     state["logs"].append(f"Research Context: {context}")
     # Store context for developer agent to use
     if "research_context" not in state:
         state["research_context"] = context
     return state
 
+@observe_node("developer")
 async def developer_node(state: AgentState) -> AgentState:
     """Person 1: Generate code from plan"""
     if not state["plan"]:
         state["logs"].append("No plan available for development")
         return state
-    developer = DeveloperAgent()
-    state["code_patch"] = await developer.generate_code(state["plan"])
+    state["code_patch"] = await developer_agent.generate_code(
+        state["plan"], context_docs=state.get("research_context", "")
+    )
+    state["logs"].append(
+        f"Code generated: {len(state['code_patch'].files)} file(s) synthesized"
+    )
     return state
 
+@observe_node("tester")
 def tester_node(state: AgentState) -> AgentState:
     """Person 2: Execute tests via SandboxRunner"""
     if not state["code_patch"]:
@@ -63,16 +76,20 @@ def tester_node(state: AgentState) -> AgentState:
 
     try:
         runner = SandboxRunner()
+        runner.reset_workspace()
         runner.apply_patch(state["code_patch"])
         result = runner.execute_tests()
         state["test_output"] = result
+        record_test_result(bool(result.get("passed", False)))
         state["logs"].append(f"Tests executed: passed={result['passed']}")
     except Exception as e:
         state["test_output"] = {"passed": False, "stdout": "", "stderr": str(e)}
+        record_test_result(False)
         state["logs"].append(f"Test execution error: {str(e)}")
 
     return state
 
+@observe_node("reviewer")
 def reviewer_node(state: AgentState) -> AgentState:
     """Person 2: Review code for issues"""
     if not state.get("code_patch"):
@@ -93,6 +110,7 @@ def reviewer_node(state: AgentState) -> AgentState:
     return state
 
 
+@observe_node("healer")
 async def healer_node(state: AgentState) -> AgentState:
     """Person 2: Suggest fixes for failed tests"""
     if not state.get("code_patch"):
@@ -111,6 +129,7 @@ async def healer_node(state: AgentState) -> AgentState:
         summary = "No structured failure summary available."
 
     state["logs"].append("Analyzing test failures for fixes")
+    HEALING_CYCLES.inc()
 
     try:
         corrected_patch = await heal(
@@ -130,14 +149,23 @@ async def healer_node(state: AgentState) -> AgentState:
 
     return state
 
-def github_pr_node(state: AgentState) -> AgentState:
+@observe_node("github_pr")
+async def github_pr_node(state: AgentState) -> AgentState:
     """Person 2: Push PR to GitHub"""
     if not state["code_patch"]:
         state["logs"].append("No code patch to push")
         return state
-    # Simulate GitHub PR creation - in real implementation would call GitHub API
-    state["pr_url"] = "https://github.com/DeodalusAi/DeodalusAi/pull/1"
-    state["logs"].append(f"PR created: {state['pr_url']}")
+    try:
+        state["pr_url"] = await GitHubOps().create_pull_request(
+            title=f"Automated fix: {state['prompt'][:72]}",
+            body="Generated and verified by the DaedalusOS agent workflow.",
+            patch=state["code_patch"],
+            repository=state.get("target_repo"),
+            base_branch=state.get("base_branch", "main"),
+        )
+        state["logs"].append(f"PR created in {state.get('target_repo')}: {state['pr_url']}")
+    except Exception as exc:
+        state["logs"].append(f"PR creation skipped: {exc}")
     return state
 
 # 1. Initialize Graph with shared AgentState

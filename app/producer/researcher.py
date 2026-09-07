@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import os
+import re
+import time
 import uuid
+from collections import OrderedDict
 from typing import List, Optional
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qmodels
 
 from app.producer.gateway import LLMGateway
+from app.producer.memory import AgentMemory
 
 load_dotenv()
 
@@ -26,9 +30,14 @@ class ResearcherAgent:
     def __init__(self, collection_name: str = "daedalus_docs", gateway: Optional[LLMGateway] = None):
         self.collection_name = collection_name
         self.gateway = gateway or LLMGateway()
+        self.memory = AgentMemory()
         
         self.qdrant_url = os.getenv("QDRANT_URL")
         self.qdrant_api_key = os.getenv("QDRANT_API_KEY")
+        self.cache_ttl = float(os.getenv("RAG_CACHE_TTL_SECONDS", "900"))
+        self.cache_size = int(os.getenv("RAG_CACHE_SIZE", "128"))
+        self._embedding_cache: OrderedDict[str, List[float]] = OrderedDict()
+        self._context_cache: OrderedDict[tuple[str, int], tuple[float, str]] = OrderedDict()
 
         # Initialize Qdrant Client (Cloud if credentials exist, otherwise In-Memory for local dev)
         if self.qdrant_url and not _is_placeholder(self.qdrant_url):
@@ -68,13 +77,21 @@ class ResearcherAgent:
         Generates vector embeddings. Uses Gemini if available, 
         or creates a deterministic normalized mock vector for offline resilience.
         """
+        normalized_text = text.strip()
+        cached = self._embedding_cache.get(normalized_text)
+        if cached:
+            self._embedding_cache.move_to_end(normalized_text)
+            return cached
+
         if self.gateway.gemini_client:
             try:
                 result = self.gateway.gemini_client.models.embed_content(
                     model="text-embedding-004",
                     contents=text,
                 )
-                return result.embedding.values
+                vector = result.embedding.values
+                self._embedding_cache[normalized_text] = vector
+                return vector
             except Exception:
                 pass
         
@@ -84,7 +101,11 @@ class ResearcherAgent:
         raw = [(b / 255.0) for b in h]
         repeated = (raw * ((768 // len(raw)) + 1))[:768]
         norm = sum(x * x for x in repeated) ** 0.5
-        return [x / norm for x in repeated]
+        vector = [x / norm for x in repeated]
+        self._embedding_cache[normalized_text] = vector
+        while len(self._embedding_cache) > self.cache_size:
+            self._embedding_cache.popitem(last=False)
+        return vector
 
     def _seed_default_docs(self):
         """Pre-populates best-practice architecture documents into Qdrant."""
@@ -127,6 +148,19 @@ class ResearcherAgent:
         Queries Qdrant vector database for relevant architectural guidelines
         and formats them into a single string for the Developer Agent.
         """
+        cache_key = (query.strip(), limit)
+        cached = self._context_cache.get(cache_key)
+        if cached and time.monotonic() - cached[0] < self.cache_ttl:
+            self._context_cache.move_to_end(cache_key)
+            return cached[1]
+        remembered = self.memory.recall(query)
+        query_terms = self._content_terms(query)
+        if remembered and (
+            not query_terms
+            or query_terms.intersection(self._content_terms(remembered))
+        ):
+            self._store_context(cache_key, remembered)
+            return remembered
         try:
             query_vector = self._get_embedding(query)
             search_result = self.client.query_points(
@@ -136,20 +170,48 @@ class ResearcherAgent:
             )
 
             if not search_result or not search_result.points:
-                return "Use standard Python clean-code architecture with modular functions and pytest suites."
+                context = "Use standard Python clean-code architecture with modular functions and pytest suites."
+                self._store_context(cache_key, context)
+                return context
 
             context_blocks = []
             for hit in search_result.points:
                 payload = hit.payload or {}
                 title = payload.get("title", "Guideline")
                 content = payload.get("content", "")
+                if query_terms and not query_terms.intersection(self._content_terms(f"{title} {content}")):
+                    continue
                 context_blocks.append(f"### {title}\n{content}")
 
-            return "\n\n".join(context_blocks)
-
+            context = "\n\n".join(context_blocks) or "Use standard Python clean-code architecture and focused pytest suites."
+            self.memory.remember(query, context)
+            self._store_context(cache_key, context)
+            return context
         except Exception as e:
             print(f"[Researcher Warning] Qdrant search encountered an issue: {e}")
-            return "Follow standard Python modular design patterns and pytest unit testing conventions."
+            context = "Follow standard Python modular design patterns and pytest unit testing conventions."
+            self.memory.remember(query, context)
+            self._store_context(cache_key, context)
+            return context
+
+    @staticmethod
+    def _content_terms(value: str) -> set[str]:
+        stop_words = {
+            "the", "and", "for", "with", "from", "into", "that", "this", "using",
+            "tests", "test", "python", "pytest", "standard", "clean", "architecture",
+            "function", "functions", "implementation", "module", "modules",
+        }
+        return {
+            term
+            for term in re.findall(r"[a-z][a-z0-9]+", value.lower())
+            if len(term) > 2 and term not in stop_words
+        }
+
+    def _store_context(self, key: tuple[str, int], context: str) -> None:
+        self._context_cache[key] = (time.monotonic(), context)
+        self._context_cache.move_to_end(key)
+        while len(self._context_cache) > self.cache_size:
+            self._context_cache.popitem(last=False)
 
 
 # --- Standalone Verification Test for Person 1 ---

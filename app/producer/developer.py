@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Optional
 
 from app.producer.gateway import LLMGateway
@@ -18,7 +19,9 @@ Strict Code Synthesis Rules:
    - Place test modules in 'tests/' (e.g., 'tests/test_main.py').
 4. Import Correctness:
    - Use relative or standard package imports assuming the workspace root is the base directory.
-   - Use standard library, fastapi, pydantic, pytest, and httpx where applicable.
+    - Use only standard library, fastapi, pydantic, pytest, and httpx; do not invent dependencies.
+    - This project uses Pydantic v2: use BaseModel, not BaseSettings. Do not import pydantic_settings.
+    - Keep generated tests runnable with the installed Python interpreter and pytest.
 5. Deterministic Test Design:
    - Tests must cover core functionality, boundary conditions, and error cases (e.g., 404, 422, invalid payloads).
    - If writing FastAPI tests, use `starlette.testclient.TestClient` or `fastapi.testclient.TestClient`.
@@ -41,6 +44,8 @@ class DeveloperAgent:
             for t in plan.tasks
         )
 
+        max_context_chars = int(os.getenv("RAG_MAX_CONTEXT_CHARS", "4000"))
+        bounded_context = context_docs.strip()[:max_context_chars]
         user_prompt = f"""
 {DEVELOPER_SYSTEM_PROMPT}
 
@@ -54,13 +59,14 @@ Planned Tasks:
 {tasks_text}
 
 Additional Architectural Context / Guidelines:
-"{context_docs if context_docs else 'Follow standard clean architecture with isolated modular components.'}"
+"{bounded_context if bounded_context else 'Follow standard clean architecture with isolated modular components.'}"
 
 Generate all necessary source code files and comprehensive pytest suites.
 """
         return await self.gateway.generate_structured(
             prompt=user_prompt,
             schema=CodePatch,
+            model=os.getenv("DEVELOPER_MODEL", self.gateway.gemini_model),
         )
 
 

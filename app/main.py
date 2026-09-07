@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import uuid
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict
 
@@ -9,10 +11,12 @@ from fastapi import BackgroundTasks, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from starlette.responses import StreamingResponse
+from prometheus_client import make_asgi_app
 
 from app.graph import daedalus_app
+from app.observability.metrics import HTTP_LATENCY, HTTP_REQUESTS
 from app.schemas import AgentState
 
 app = FastAPI(title="DaedalusOS Engine", version="1.0.0")
@@ -25,13 +29,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory queue to broadcast live events to the SSE listener
-event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+
+@app.middleware("http")
+async def observe_http(request, call_next):
+    started = asyncio.get_running_loop().time()
+    response = await call_next(request)
+    path = request.url.path
+    HTTP_LATENCY.labels(request.method, path).observe(asyncio.get_running_loop().time() - started)
+    HTTP_REQUESTS.labels(request.method, path, str(response.status_code)).inc()
+    return response
+
+# Each workflow gets its own queue so concurrent runs cannot consume each other's events.
+event_queues: dict[str, asyncio.Queue[Dict[str, Any]]] = {}
+
+app.mount("/metrics", make_asgi_app())
 
 
 class RunRequest(BaseModel):
     prompt: str
     max_iterations: int = 3
+    target_repo: str | None = None
+    base_branch: str = "main"
+
+    @field_validator("target_repo")
+    @classmethod
+    def validate_target_repo(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        normalized = value.strip().removesuffix(".git")
+        if "://" in normalized or normalized.count("/") != 1:
+            raise ValueError("target_repo must use owner/repository format")
+        return normalized
 
 
 def _build_event_payload(node_name: str, state_update: dict) -> dict:
@@ -65,6 +93,10 @@ def _get_node_data(node_name: str, state_update: dict) -> dict:
         return {
             "summary": state_update["code_patch"].summary,
             "file_count": len(state_update["code_patch"].files),
+            "files": [
+                {"path": file_patch.path, "content": file_patch.content}
+                for file_patch in state_update["code_patch"].files
+            ],
         }
     elif node_name == "tester" and "test_output" in state_update and state_update["test_output"]:
         return {
@@ -74,13 +106,22 @@ def _get_node_data(node_name: str, state_update: dict) -> dict:
     elif node_name == "reviewer" and "review" in state_update and state_update["review"]:
         review = state_update["review"]
         return {"root_cause": review if isinstance(review, str) else str(review)}
+    elif node_name == "healer" and "code_patch" in state_update and state_update["code_patch"]:
+        return {
+            "summary": state_update["code_patch"].summary,
+            "file_count": len(state_update["code_patch"].files),
+            "files": [
+                {"path": file_patch.path, "content": file_patch.content}
+                for file_patch in state_update["code_patch"].files
+            ],
+        }
     elif node_name == "github_pr" and "pr_url" in state_update and state_update["pr_url"]:
         return {"pr_url": state_update["pr_url"]}
     
     return {}
 
 
-async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
+async def run_agent_workflow(run_id: str, prompt: str, max_iterations: int = 3, target_repo: str | None = None, base_branch: str = "main") -> None:
     """Executes the compiled LangGraph pipeline and feeds updates into the event queue."""
     # Validate max_iterations bounds
     safe_iterations = max(1, min(max_iterations, 10))
@@ -94,9 +135,13 @@ async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
         "iteration": 0,
         "max_iterations": safe_iterations,
         "pr_url": None,
+        "target_repo": target_repo or os.getenv("GITHUB_REPO"),
+        "base_branch": base_branch,
         "logs": [],
     }
 
+    event_queue = event_queues[run_id]
+    final_state: dict[str, Any] = {}
     await event_queue.put({
         "step": "INITIALIZED",
         "message": f"Engine initialized for requirement: '{prompt}'",
@@ -106,14 +151,29 @@ async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
     try:
         async for output in daedalus_app.astream(initial_state):
             for node_name, state_update in output.items():
+                final_state.update(state_update)
                 payload = _build_event_payload(node_name, state_update)
                 await event_queue.put(payload)
 
-        await event_queue.put({
-            "step": "COMPLETE",
-            "message": "Workflow completed successfully.",
-            "data": {}
-        })
+        tests_passed = bool((final_state.get("test_output") or {}).get("passed"))
+        pr_url = final_state.get("pr_url")
+        if tests_passed and pr_url:
+            await event_queue.put({
+                "step": "COMPLETE",
+                "message": "Workflow completed and delivery succeeded.",
+                "data": {"pr_url": pr_url},
+            })
+        else:
+            message = (
+                "Workflow stopped before delivery because generated tests did not pass."
+                if not tests_passed
+                else "Workflow verified successfully but GitHub delivery failed."
+            )
+            await event_queue.put({
+                "step": "ERROR",
+                "message": message,
+                "data": {"tests_passed": tests_passed, "pr_url": pr_url},
+            })
 
     except Exception as exc:
         await event_queue.put({
@@ -126,19 +186,28 @@ async def run_agent_workflow(prompt: str, max_iterations: int = 3) -> None:
 @app.post("/api/run")
 async def trigger_run(req: RunRequest, background_tasks: BackgroundTasks) -> Dict[str, str]:
     """Starts the LangGraph execution in a non-blocking background task."""
-    background_tasks.add_task(run_agent_workflow, req.prompt, req.max_iterations)
-    return {"status": "started", "prompt": req.prompt}
+    run_id = uuid.uuid4().hex
+    event_queues[run_id] = asyncio.Queue()
+    background_tasks.add_task(run_agent_workflow, run_id, req.prompt, req.max_iterations, req.target_repo, req.base_branch)
+    return {"status": "started", "prompt": req.prompt, "run_id": run_id, "target_repo": req.target_repo or os.getenv("GITHUB_REPO", "")}
 
 
 @app.get("/api/events")
-async def stream_events() -> StreamingResponse:
+async def stream_events(run_id: str) -> StreamingResponse:
     """Streams server-sent events (SSE) continuously to the browser UI."""
+    event_queue = event_queues.get(run_id)
+    if event_queue is None:
+        return StreamingResponse(iter(["data: {\"step\":\"ERROR\",\"message\":\"Unknown run_id\"}\n\n"]), media_type="text/event-stream", status_code=404)
+
     async def event_generator() -> AsyncGenerator[str, None]:
-        while True:
-            data = await event_queue.get()
-            yield f"data: {json.dumps(data)}\n\n"
-            if data.get("step") in {"COMPLETE", "ERROR"}:
-                break
+        try:
+            while True:
+                data = await event_queue.get()
+                yield f"data: {json.dumps(data)}\n\n"
+                if data.get("step") in {"COMPLETE", "ERROR"}:
+                    break
+        finally:
+            event_queues.pop(run_id, None)
 
     return StreamingResponse(
         event_generator(),

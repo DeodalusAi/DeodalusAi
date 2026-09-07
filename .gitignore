@@ -5,6 +5,7 @@ env/
 __pycache__/
 *.pyc
 sandbox/workspace/
+sandbox/memory.sqlite3*
 .pytest_cache/
 *.log
 .DS_Store

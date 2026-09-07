@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Optional
 
 from app.producer.gateway import LLMGateway
@@ -40,6 +41,7 @@ Analyze the requirement and generate the complete architecture overview and task
         return await self.gateway.generate_structured(
             prompt=user_prompt,
             schema=TaskBreakdown,
+            model=os.getenv("PLANNER_MODEL", self.gateway.gemini_model),
         )
 
 

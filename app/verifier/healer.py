@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Type
 
 from app.producer.gateway import LLMGateway
@@ -52,10 +53,15 @@ Instructions:
 - Preserve the same overall project structure and file names whenever possible.
 - Return a corrected CodePatch matching the same schema used in app.schemas.CodePatch.
 - Do not add unrelated refactors; focus only on the failing behavior.
+- Preserve the project's installed dependencies and Pydantic v2 compatibility; use BaseModel instead of BaseSettings.
 - Return valid structured output only.
 """
 
-    return await gateway.generate_structured(prompt, CodePatch)
+    return await gateway.generate_structured(
+        prompt,
+        CodePatch,
+        model=os.getenv("HEALER_MODEL", gateway.gemini_model),
+    )
 
 
 if __name__ == "__main__":
