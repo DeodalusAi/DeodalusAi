@@ -29,6 +29,92 @@ Requirement
 
 The workflow is implemented as a cyclic LangGraph state machine. A failed test goes through the reviewer and healer before returning to the sandbox. The graph stops when tests pass, the configured iteration limit is reached, or delivery fails.
 
+## Our approach for judges
+
+Most coding agents stop at text generation. DaedalusOS treats software work as a controlled delivery process: understand the request, make a plan, use relevant context, produce a patch, run the patch, learn from failures, and deliver only the verified result.
+
+### 1. Separate responsibilities instead of using one large prompt
+
+Each stage has one clear job and passes a typed result to the next stage:
+
+| Stage | What it contributes | Why it matters |
+| --- | --- | --- |
+| Planner | Converts a vague requirement into an epic, architecture overview, and dependent tasks. | Makes the agent's intent inspectable before code is written. |
+| Researcher | Retrieves implementation guidance from Qdrant, with local fallback context. | Grounds generation in reusable engineering knowledge instead of guesswork. |
+| Developer | Generates complete source files and matching pytest files through structured output. | Produces an actionable patch, not an explanation or partial snippet. |
+| Tester | Applies the patch to a clean workspace and runs real `pytest`. | Replaces confidence claims with executable evidence. |
+| Reviewer | Extracts the useful root-cause section from failed test output. | Gives the healer focused failure information instead of an entire noisy log. |
+| Healer | Generates a corrected patch from the original code and failure summary. | Closes the feedback loop and demonstrates bounded self-correction. |
+| GitHub delivery | Creates a branch, writes the verified files, and opens a pull request. | Connects the demo to a normal engineering collaboration workflow. |
+
+### 2. Architecture: producer, state graph, verifier, delivery
+
+```text
+            +----------------------+
+            | FastAPI + browser UI |
+            | POST /api/run        |
+            | GET /api/events      |
+            +----------+-----------+
+               |
+               v
+            +----------------------+
+            | LangGraph AgentState |
+            | typed workflow state  |
+            +----------+-----------+
+               |
+         +-----------------+-----------------+
+         |                                   |
+         v                                   v
+      +--------------+                    +--------------+
+      | Producer     |                    | Verifier     |
+      | planner      |                    | sandbox      |
+      | researcher   |                    | reviewer     |
+      | developer    |                    | healer       |
+      +------+-------+                    +------+-------+
+         |                                   |
+         +------------ CodePatch ------------+
+               |
+         +---------v---------+
+         | GitHub PR delivery|
+         +-------------------+
+```
+
+The API is intentionally thin: it validates the request, starts a background run, and streams node events. `AgentState` and the Pydantic patch models form the contract between components. The graph owns sequencing and retry decisions; producer agents create the patch; verifier agents decide whether the patch has earned delivery.
+
+### 3. The key design decision: verification is a loop
+
+The tester is not a final checkbox. It is a decision point in the graph:
+
+1. If the tests pass, the patch can move to GitHub delivery.
+2. If the tests fail, the reviewer compresses the failure into an actionable summary.
+3. The healer uses that summary to produce a new patch.
+4. The sandbox is reset and the new patch is tested again.
+5. The loop stops at the configured iteration limit or the hard healing cap.
+
+This makes the system measurable: judges can see the generated files, test output, failure summary, healing attempt, and final PR event in the live UI. It also keeps failure recovery bounded rather than allowing an unconstrained model loop.
+
+### 4. Context and reliability strategy
+
+The system uses three complementary context layers:
+
+- **CAG:** the LLM gateway caches validated structured responses with a TTL and size limit.
+- **RAG:** the researcher retrieves architecture guidance from Qdrant and caches formatted context.
+- **MAG:** useful research context is persisted in SQLite so repeated requirements can reuse it after a restart.
+
+Provider routing is explicit and resilient. Gemini, Groq, and Ollama can be selected per role, while fallback paths and deterministic local behavior keep development and evaluation possible without requiring every cloud service.
+
+### 5. Trust boundaries and safety controls
+
+- Generated paths are checked so a patch cannot escape the sandbox workspace.
+- Tests run in a subprocess with a timeout and an isolated `PYTHONPATH`.
+- Healing is capped at three attempts, and the overall graph iteration count is bounded.
+- A run is marked `COMPLETE` only when tests pass and a pull-request URL exists.
+- GitHub credentials are supplied through environment variables and are never part of generated patches.
+
+### What to evaluate in a demo
+
+Use a requirement with a clear behavioral outcome, such as adding a validated converter or fixing a failing calculation. Watch the event stream in this order: plan, research context, generated files, pytest result, and either delivery or a reviewer/healer cycle. The strongest evidence is not the model response; it is the passing test output and the resulting reviewable GitHub patch.
+
 ## Quickstart
 
 ### 1. Install
