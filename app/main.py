@@ -85,9 +85,24 @@ def _build_event_payload(node_name: str, state_update: dict) -> dict:
 def _get_node_data(node_name: str, state_update: dict) -> dict:
     """Extract node-specific data to further reduce complexity."""
     if node_name == "planner" and "plan" in state_update and state_update["plan"]:
+        plan = state_update["plan"]
         return {
-            "epic_title": state_update["plan"].epic_title,
-            "task_count": len(state_update["plan"].tasks),
+            "epic_title": plan.epic_title,
+            "architecture_overview": getattr(plan, "architecture_overview", ""),
+            "task_count": len(plan.tasks),
+            "tasks": [
+                {
+                    "id": task.id,
+                    "title": task.title,
+                    "description": task.description,
+                    "dependencies": task.dependencies,
+                }
+                for task in plan.tasks
+            ],
+        }
+    elif node_name == "researcher" and "research_context" in state_update:
+        return {
+            "research_context": state_update.get("research_context", ""),
         }
     elif node_name == "developer" and "code_patch" in state_update and state_update["code_patch"]:
         return {

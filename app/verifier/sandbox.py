@@ -54,6 +54,8 @@ class SandboxRunner:
                     text=True,
                     timeout=timeout,
                 )
+                if result.returncode != 0 and "No module named pytest" in (result.stderr or ""):
+                    continue
                 return {
                     "passed": result.returncode == 0,
                     "stdout": result.stdout,
