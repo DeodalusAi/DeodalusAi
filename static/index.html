@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-[#0B0C0B] text-slate-200 selection:bg-[#C9A227]/30 selection:text-[#C9A227]">
+<html lang="en" class="h-full bg-[#0A1210] text-[#F4F8F6] selection:bg-[#6E93A8]/30 selection:text-[#C9DCE6]">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DaedalusOS — The Engineering Library</title>
+  <title>DAEDALUS — The Agentic AI Engineered Scriptorium</title>
   
-  <!-- Fonts -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
@@ -13,38 +13,64 @@
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Cytoscape.js for Graph Topology -->
+  <!-- Cytoscape.js for Topology Graph -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Prism.js for Syntax Highlighting -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
 
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            obsidian: '#0B0C0B',
-            archive: '#111311',
-            panel: '#171A17',
-            elevated: '#1C1F1C',
-            brass: {
-              DEFAULT: '#C9A227',
-              dim: '#A3821C',
-              light: '#E2BF48',
-              muted: 'rgba(201, 162, 39, 0.15)',
-            },
+            // Neutral base scale (blue-green blended darks — app floor)
+            void: '#0A1210',
+            'base-900': '#101B1D',
+            'base-800': '#16262A',
+            'base-700': '#1E3236',
+            'base-600': '#28403F',
+
+            // Mystic Blue scale
+            'blue-100': '#C9DCE6',
+            'blue-200': '#9FBFCF',
+            'blue-300': '#6E93A8',
+            'blue-400': '#4C7086',
+            'blue-500': '#2F4E5F',
+
+            // Mystic Green scale
+            'green-100': '#C9E6DA',
+            'green-200': '#9FCFB9',
+            'green-300': '#6FA893',
+            'green-400': '#4C8670',
+            'green-500': '#2F5F4E',
+
+            // Foggy White scale
+            'fog-50': '#F4F8F6',
+            'fog-100': '#E4EDEA',
+            'fog-200': '#C7D2CE',
+            'fog-300': '#9AA8A4',
+
+            // Fault Rust
+            rust: '#B1493C',
+
+            // Earth Brown scale (Scriptorium Architectural Framing & Borders)
+            'earth-900': '#221813',
+            'earth-800': '#36271F',
+            'earth-700': '#4D382C',
+            'earth-600': '#694E3E',
+            'earth-500': '#886753',
+            'earth-400': '#AA836C',
+            'earth-300': '#CEB09A',
+            'earth-200': '#E3CDBB',
+
+            // Semantic Technical Colors
             status: {
-              idle: '#94A3B8',
-              running: '#F59E0B',
-              passed: '#10B981',
-              failed: '#F43F5E',
-              active: '#6366F1',
+              idle: '#9AA8A4',      /* Fog-300 */
+              running: '#9FCFB9',   /* Green-200 */
+              passed: '#4C8670',    /* Green-400 */
+              failed: '#B1493C',    /* Fault Rust */
+              active: '#6E93A8',    /* Blue-300 */
             }
           },
           fontFamily: {
@@ -58,17 +84,27 @@
   </script>
 
   <style>
-    /* Architectural Archival Grid Overlay */
-    .bg-archive-grid {
+    /* Multi-Shade Fog / Blue / Green Ambient Mist Background Grid */
+    .bg-pine-grid {
       background-image: 
-        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        linear-gradient(to right, rgba(232, 240, 238, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(232, 240, 238, 0.03) 1px, transparent 1px);
       background-size: 32px 32px;
     }
 
-    .bg-brass-watermark {
-      background-image: radial-gradient(rgba(201, 162, 39, 0.04) 1px, transparent 0);
-      background-size: 16px 16px;
+    /* Ambient Forestic Green Canopy & Mist Gradients */
+    .bg-canopy-beam {
+      background: 
+        radial-gradient(circle at 15% 15%, rgba(47, 110, 85, 0.28) 0%, transparent 60%),
+        radial-gradient(circle at 85% 85%, rgba(111, 168, 147, 0.22) 0%, transparent 65%),
+        radial-gradient(circle at 50% 40%, rgba(20, 55, 42, 0.38) 0%, transparent 70%);
+    }
+
+    /* Deep Forestic Treeline Canopy Background Silhouette */
+    .bg-treeline {
+      background-image: 
+        linear-gradient(to top, rgba(13, 35, 26, 0.6) 0%, rgba(10, 24, 18, 0.3) 50%, transparent 100%),
+        linear-gradient(to bottom, rgba(15, 40, 28, 0.35) 0%, transparent 40%);
     }
 
     /* Custom Scrollbars */
@@ -77,36 +113,36 @@
       height: 5px;
     }
     ::-webkit-scrollbar-track {
-      background: #0B0C0B;
+      background: #0A1210;
     }
     ::-webkit-scrollbar-thumb {
-      background: #262926;
+      background: #1E3236;
       border-radius: 2px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #3A3E3A;
+      background: #28403F;
     }
 
-    /* Code Editor Line Numbers & Margin Annotations */
+    /* Code Line & Diff Highlights */
     .code-line {
       display: flex;
       min-height: 1.5rem;
       line-height: 1.5rem;
     }
     .code-line:hover {
-      background-color: rgba(255, 255, 255, 0.02);
+      background-color: rgba(232, 240, 238, 0.03);
     }
     .code-line.failed-line {
-      background-color: rgba(244, 63, 94, 0.12);
-      border-left: 2px solid #F43F5E;
+      background-color: rgba(177, 73, 60, 0.15);
+      border-left: 3px solid #B1493C;
     }
     .code-line.added-line {
-      background-color: rgba(16, 185, 129, 0.12);
-      border-left: 2px solid #10B981;
+      background-color: rgba(76, 134, 112, 0.15);
+      border-left: 3px solid #4C8670;
     }
     .code-line.removed-line {
-      background-color: rgba(244, 63, 94, 0.12);
-      border-left: 2px solid #F43F5E;
+      background-color: rgba(177, 73, 60, 0.15);
+      border-left: 3px solid #B1493C;
       opacity: 0.7;
     }
 
@@ -115,75 +151,120 @@
       flex-shrink: 0;
       text-align: right;
       padding-right: 1rem;
-      color: #4A524A;
+      color: #9AA8A4;
       user-select: none;
     }
 
-    /* Pulse animation */
-    @keyframes subtle-pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+    /* 3D Page Flip Transformation */
+    .book-container {
+      perspective: 1200px;
     }
-    .animate-subtle-pulse {
-      animation: subtle-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    
+    .book-page-turn {
+      transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1), opacity 0.6s ease;
+      transform-origin: left center;
+    }
+
+    .book-page-turning {
+      transform: rotateY(-180deg);
+      opacity: 0;
+    }
+
+    /* Frost Seal Drop & Rim Glow Animation */
+    @keyframes frost-seal-stamp {
+      0% {
+        transform: scale(3) rotate(-15deg);
+        opacity: 0;
+      }
+      70% {
+        transform: scale(0.9) rotate(5deg);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    .animate-frost-seal {
+      animation: frost-seal-stamp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* Reduced Motion Support */
+    @media (prefers-reduced-motion: reduce) {
+      .book-page-turn {
+        transition: none !important;
+      }
+      .animate-frost-seal {
+        animation: none !important;
+        opacity: 1 !important;
+      }
+      * {
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 </head>
 
-<body class="h-full flex flex-col font-sans bg-obsidian text-slate-200 overflow-hidden bg-archive-grid selection:bg-brass/20 selection:text-brass-light">
+<body class="h-full flex flex-col font-sans bg-void text-fog-100 overflow-hidden bg-pine-grid bg-canopy-beam bg-treeline selection:bg-blue-300/20 selection:text-blue-100">
 
-  <!-- ================= GLOBAL ARCHIVE HEADER ================= -->
-  <header class="h-12 bg-archive border-b border-white/10 px-4 flex items-center justify-between shrink-0 z-20">
+  <!-- ================= GLOBAL ARCHIVE HEADER (ZONE A TOP — LEANS BLUE) ================= -->
+  <header class="h-14 bg-base-900 border-b border-white/[0.08] px-4 flex items-center justify-between shrink-0 z-20 shadow-md">
+    
     <!-- Left: Branding & Status -->
     <div class="flex items-center gap-4">
-      <div class="flex items-baseline gap-2">
-        <span class="font-serif font-bold text-lg tracking-wider text-slate-100 uppercase">DAEDALUS</span>
-        <span class="font-serif italic text-xs text-brass tracking-widest uppercase">THE ENGINEERING LIBRARY</span>
+      <div class="flex flex-col">
+        <div class="flex items-baseline gap-2">
+          <span class="font-serif font-bold text-lg tracking-wider text-fog-50 uppercase">DAEDALUS</span>
+          <span class="font-serif italic text-xs text-blue-300 tracking-widest uppercase">THE AGENTIC AI ENGINEERED SCRIPTORIUM</span>
+        </div>
       </div>
-      <div class="h-4 w-[1px] bg-white/10"></div>
-      <div id="globalStatusPill" class="flex items-center gap-2 bg-obsidian border border-white/10 px-2.5 py-0.5 rounded text-[11px] font-mono">
+      <div class="h-5 w-[1px] bg-white/10 hidden sm:block"></div>
+      
+      <!-- Global Status Pill -->
+      <div id="globalStatusPill" class="flex items-center gap-2 bg-void border border-white/[0.08] px-2.5 py-1 rounded text-[11px] font-mono">
         <span id="globalStatusDot" class="w-2 h-2 rounded-full bg-status-idle"></span>
-        <span id="globalStatusText" class="text-slate-300 font-medium tracking-wide">ARCHIVE IDLE</span>
+        <span id="globalStatusText" class="text-fog-100 font-medium tracking-wide">ARCHIVE IDLE</span>
       </div>
     </div>
 
-    <!-- Right: Telemetry Bar -->
-    <div class="flex items-center gap-6 text-[11px] font-mono text-slate-400">
+    <!-- Right: Telemetry Bar (Blue Leaning) -->
+    <div class="flex items-center gap-5 text-[11px] font-mono text-fog-300">
       <div class="flex items-center gap-2">
-        <span class="text-slate-500 uppercase">EDITION:</span>
-        <span id="telemetryBranch" class="text-slate-200 font-semibold">main</span>
-        <span class="text-[10px] text-slate-600">[GIT BRANCH]</span>
+        <span class="text-blue-200/60 uppercase">EDITION:</span>
+        <span id="telemetryBranch" class="text-fog-50 font-semibold">main</span>
+        <span class="text-[10px] text-blue-300/40">[GIT BRANCH]</span>
       </div>
 
       <div class="flex items-center gap-2">
-        <span class="text-slate-500 uppercase">CYCLE:</span>
-        <span id="telemetryCycle" class="text-brass font-semibold">0 / 3</span>
-        <span class="text-[10px] text-slate-600">[ITERATION]</span>
+        <span class="text-blue-200/60 uppercase">CYCLE:</span>
+        <span id="telemetryCycle" class="text-blue-300 font-semibold">0 / 3</span>
+        <span class="text-[10px] text-blue-300/40">[ITERATION]</span>
       </div>
 
       <div class="flex items-center gap-2">
-        <span class="text-slate-500 uppercase">TIME:</span>
-        <span id="telemetryTimer" class="text-slate-200 font-semibold">00:00.00</span>
-        <span class="text-[10px] text-slate-600">[EXECUTION TIME]</span>
+        <span class="text-blue-200/60 uppercase">TIME:</span>
+        <span id="telemetryTimer" class="text-fog-50 font-semibold">00:00.00</span>
+        <span class="text-[10px] text-blue-300/40">[EXECUTION TIME]</span>
       </div>
 
       <div class="flex items-center gap-2 hidden lg:flex">
-        <span class="text-slate-500 uppercase">WORKSPACE:</span>
-        <span id="telemetryFiles" class="text-slate-200 font-semibold">0 FILES</span>
-        <span class="text-[10px] text-slate-600">[0.0 KB]</span>
+        <span class="text-blue-200/60 uppercase">WORKSPACE:</span>
+        <span id="telemetryFiles" class="text-fog-50 font-semibold">0 FILES</span>
+        <span class="text-[10px] text-blue-300/40">[0.0 KB]</span>
       </div>
     </div>
   </header>
 
 
   <!-- ================= WORK ORDER / SPECIFICATION BAR ================= -->
-  <section class="bg-panel border-b border-white/10 p-3 px-4 shrink-0 z-10">
+  <section class="bg-base-900 border-b border-white/[0.08] p-3 px-4 shrink-0 z-10">
     <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3">
       
       <!-- Label -->
       <div class="flex flex-col shrink-0 min-w-[150px]">
-        <span class="font-serif font-semibold text-xs tracking-wider text-slate-200 uppercase">REQUEST</span>
-        <span class="font-mono text-[10px] text-brass uppercase tracking-widest">[SPECIFICATION]</span>
+        <span class="font-serif font-semibold text-xs tracking-wider text-fog-50 uppercase">REQUEST</span>
+        <span class="font-mono text-[10px] text-blue-300 uppercase tracking-widest">[SPECIFICATION]</span>
       </div>
 
       <!-- Input Box -->
@@ -192,10 +273,10 @@
           id="specificationInput" 
           type="text" 
           value="Build an in-memory token bucket rate limiter with FastAPI middleware and pytest tests."
-          placeholder="Enter product requirement or engineering specification..." 
-          class="w-full bg-obsidian border border-white/10 rounded px-3.5 py-2 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brass/60 focus:ring-1 focus:ring-brass/40 transition pr-16"
+          placeholder="Describe the engineering work to be catalogued into the manuscript..." 
+          class="w-full bg-void border border-white/10 rounded px-3.5 py-2 text-xs font-mono text-fog-100 placeholder-fog-300/60 focus:outline-none focus:border-blue-300/60 focus:ring-1 focus:ring-blue-300/40 transition pr-16"
         />
-        <div class="absolute right-2 text-[10px] font-mono text-slate-500 bg-archive px-1.5 py-0.5 rounded border border-white/5 pointer-events-none">
+        <div class="absolute right-2 text-[10px] font-mono text-fog-300 bg-base-800 px-1.5 py-0.5 rounded border border-white/5 pointer-events-none">
           <span id="kbdShortcut">Ctrl + K</span>
         </div>
       </div>
@@ -205,9 +286,9 @@
         id="optionsBtn" 
         onclick="toggleOptions()"
         title="Git & Repo Configuration"
-        class="bg-archive hover:bg-elevated border border-white/10 text-slate-300 px-3 py-2 rounded text-xs font-mono flex items-center gap-1.5 transition shrink-0"
+        class="bg-void hover:bg-base-700 border border-white/10 text-fog-200 px-3 py-2 rounded text-xs font-mono flex items-center gap-1.5 transition shrink-0"
       >
-        <i data-lucide="settings" class="w-3.5 h-3.5 text-brass"></i>
+        <i data-lucide="settings" class="w-3.5 h-3.5 text-blue-300"></i>
         <span class="hidden sm:inline">CONFIG</span>
       </button>
 
@@ -216,7 +297,7 @@
         <button 
           id="dispatchBtn" 
           onclick="handleDispatch()" 
-          class="bg-brass hover:bg-brass-light active:bg-brass-dim text-obsidian font-semibold text-xs font-mono px-4 py-2 rounded transition flex items-center gap-2 shadow-lg shadow-brass/10"
+          class="bg-blue-300 hover:bg-blue-200 active:bg-blue-400 text-void font-semibold text-xs font-mono px-4 py-2 rounded transition flex items-center gap-2 shadow-md shadow-blue-300/10"
         >
           <span id="dispatchText">ADD TO CATALOGUE ↵</span>
         </button>
@@ -224,8 +305,8 @@
         <button 
           id="demoBtn" 
           onclick="runDemoMode()" 
-          title="Run deterministic 11-stage Engineering Library demo"
-          class="bg-archive hover:bg-elevated border border-brass/40 text-brass hover:text-brass-light text-xs font-mono px-3 py-2 rounded transition flex items-center gap-1.5"
+          title="Run deterministic 11-stage Multi-Shade Fog demo"
+          class="bg-void hover:bg-base-700 border border-blue-300/40 text-blue-300 hover:text-blue-200 text-xs font-mono px-3 py-2 rounded transition flex items-center gap-1.5"
         >
           <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
           <span>START DEMO</span>
@@ -236,16 +317,16 @@
     <!-- Hidden Options Drawer -->
     <div id="optionsDrawer" class="hidden mt-3 pt-3 border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
       <div>
-        <label class="block text-[10px] text-slate-400 uppercase mb-1">Target Repository [OWNER/REPO]</label>
-        <input id="targetRepoInput" type="text" placeholder="e.g. DeodalusAi/DeodulusAi" class="w-full bg-obsidian border border-white/10 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-brass/60 outline-none" />
+        <label class="block text-[10px] text-fog-300 uppercase mb-1">Target Repository [OWNER/REPO]</label>
+        <input id="targetRepoInput" type="text" placeholder="e.g. DeodalusAi/DeodulusAi" class="w-full bg-void border border-white/10 rounded px-2.5 py-1.5 text-xs text-fog-100 focus:border-blue-300/60 outline-none" />
       </div>
       <div>
-        <label class="block text-[10px] text-slate-400 uppercase mb-1">Base Branch</label>
-        <input id="baseBranchInput" type="text" value="main" class="w-full bg-obsidian border border-white/10 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-brass/60 outline-none" />
+        <label class="block text-[10px] text-fog-300 uppercase mb-1">Base Branch</label>
+        <input id="baseBranchInput" type="text" value="main" class="w-full bg-void border border-white/10 rounded px-2.5 py-1.5 text-xs text-fog-100 focus:border-blue-300/60 outline-none" />
       </div>
       <div>
-        <label class="block text-[10px] text-slate-400 uppercase mb-1">Max Iterations Limit</label>
-        <input id="maxIterationsInput" type="number" min="1" max="10" value="3" class="w-full bg-obsidian border border-white/10 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:border-brass/60 outline-none" />
+        <label class="block text-[10px] text-fog-300 uppercase mb-1">Max Iterations Limit</label>
+        <input id="maxIterationsInput" type="number" min="1" max="10" value="3" class="w-full bg-void border border-white/10 rounded px-2.5 py-1.5 text-xs text-fog-100 focus:border-blue-300/60 outline-none" />
       </div>
     </div>
   </section>
@@ -254,155 +335,314 @@
   <!-- ================= MAIN WORKSPACE (45% / 55% SPLIT) ================= -->
   <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
     
-    <!-- ================= ZONE A — CATALOGUE (LEFT 45%) ================= -->
-    <section class="lg:col-span-5 border-r border-white/10 bg-archive flex flex-col min-h-0 overflow-hidden">
+    <!-- ================= ZONE A — CATALOGUE & LIVING MANUSCRIPT (LEFT 45%) ================= -->
+    <section class="lg:col-span-5 border-r border-white/[0.08] bg-base-900 flex flex-col min-h-0 overflow-hidden">
       
-      <!-- Zone A Header -->
-      <div class="h-9 bg-panel px-4 border-b border-white/10 flex items-center justify-between shrink-0">
+      <!-- Zone A Header & View Toggle -->
+      <div class="h-9 bg-base-800 px-3 border-b border-white/[0.08] flex items-center justify-between shrink-0">
         <div class="flex items-baseline gap-2">
-          <span class="font-serif font-semibold text-xs tracking-wider text-slate-100 uppercase">CATALOGUE</span>
-          <span class="font-mono text-[10px] text-slate-500 uppercase">[STATEGRAPH TOPOLOGY]</span>
+          <span class="font-serif font-semibold text-xs tracking-wider text-fog-50 uppercase">CATALOGUE</span>
+          <span class="font-mono text-[10px] text-fog-300 uppercase">[ORCHESTRATION]</span>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="w-1.5 h-1.5 rounded-full bg-brass"></span>
-          <span id="topologyStateLabel" class="font-mono text-[10px] text-brass uppercase">CYCLIC GRAPH</span>
+
+        <!-- View Toggle (MANUSCRIPT VIEW vs GRAPH VIEW) -->
+        <div class="flex items-center bg-void p-0.5 rounded border border-white/10 text-[10px] font-mono">
+          <button 
+            id="viewBtnManuscript" 
+            onclick="switchCatalogueView('MANUSCRIPT')" 
+            class="px-2.5 py-0.5 rounded text-green-300 bg-base-900 font-semibold shadow-sm transition"
+          >
+            MANUSCRIPT VIEW
+          </button>
+          <button 
+            id="viewBtnGraph" 
+            onclick="switchCatalogueView('GRAPH')" 
+            class="px-2.5 py-0.5 rounded text-fog-300 hover:text-fog-50 transition"
+          >
+            GRAPH VIEW
+          </button>
         </div>
       </div>
 
-      <!-- Graph Container -->
-      <div class="h-[260px] bg-obsidian/80 relative border-b border-white/10 shrink-0">
-        <div id="cy" class="w-full h-full"></div>
-        <div class="absolute bottom-2 right-2 text-[10px] font-mono text-slate-600 bg-archive/80 px-2 py-0.5 rounded border border-white/5 pointer-events-none">
-          CYTOSCAPE.JS INTERACTIVE TOPOLOGY
+      <!-- ZONE A MIDDLE AREA: 75% VISUALIZATION + 25% ALWAYS-VISIBLE PHASE CHECKLIST -->
+      <div class="h-[270px] border-b border-white/[0.08] flex shrink-0 min-h-0 overflow-hidden">
+        
+        <!-- LEFT SUB-PANEL: LIVING MANUSCRIPT BOOK (MANUSCRIPT VIEW — LEANS GREEN) -->
+        <div id="manuscriptBookContainer" class="flex-1 bg-void/90 p-3 flex items-center justify-center overflow-hidden book-container">
+          
+          <!-- Open Fog Page Book Graphic -->
+          <div id="livingBook" class="w-full max-w-lg h-full bg-fog-50 text-base-900 rounded-sm shadow-2xl border-2 border-green-300/40 flex overflow-hidden relative border-r-4 border-r-base-800">
+            
+            <!-- Book Spine Line -->
+            <div class="absolute left-1/2 top-0 bottom-0 w-[2px] bg-base-900/20 z-10"></div>
+
+            <!-- Left Page: Previous Chapter Summary -->
+            <div class="w-1/2 p-3 font-serif border-r border-base-900/10 flex flex-col justify-between select-none">
+              <div>
+                <div class="text-[9px] font-mono text-base-900/50 uppercase tracking-widest border-b border-base-900/10 pb-1 mb-1.5 flex justify-between">
+                  <span>LIB. INDEX</span>
+                  <span>VOL. I</span>
+                </div>
+                <div id="bookLeftTitle" class="text-xs font-bold text-base-900 uppercase tracking-wider">
+                  TABLE OF CONTENTS
+                </div>
+                <div id="bookLeftSummary" class="text-[10px] text-base-900/70 font-mono mt-1.5 space-y-1">
+                  <div>• I. CATALOGUE OPENED</div>
+                  <div>• II. REFERENCE DESK</div>
+                  <div>• III. AUTHOR'S DESK</div>
+                  <div>• IV. PROOF SOUGHT</div>
+                </div>
+              </div>
+              <div class="text-[9px] font-mono text-base-900/40 text-center uppercase tracking-widest border-t border-base-900/10 pt-1">
+                DAEDALUS ARCHIVE
+              </div>
+            </div>
+
+            <!-- Right Page: Active Chapter Illuminated Page -->
+            <div id="bookRightPage" class="w-1/2 p-3 font-serif flex flex-col justify-between select-none relative book-page-turn">
+              
+              <!-- Mystic Green Ribbon Bookmark -->
+              <div id="bookRibbon" class="absolute -top-1 right-4 w-3 h-10 bg-green-300 rounded-b shadow-md opacity-90 z-20"></div>
+
+              <div>
+                <div class="text-[9px] font-mono text-green-500 uppercase tracking-widest border-b border-base-900/10 pb-1 mb-1.5 flex justify-between">
+                  <span id="bookPageMeta">ACTIVE PHASE</span>
+                  <span id="bookPageNum">PAGE I</span>
+                </div>
+
+                <!-- Drop-Cap & Chapter Title -->
+                <div class="flex items-start gap-2">
+                  <span id="bookDropCap" class="font-serif font-bold text-2xl text-green-300 leading-none mt-0.5">Ⅰ</span>
+                  <div class="min-w-0">
+                    <div id="bookChapterTitle" class="text-xs font-bold text-base-900 uppercase tracking-wider leading-tight">
+                      THE CATALOGUE IS OPENED
+                    </div>
+                    <div id="bookTechnicalLabel" class="text-[9px] font-mono text-green-400 uppercase mt-0.5">[PLANNER]</div>
+                  </div>
+                </div>
+
+                <!-- Live Recorded Lines -->
+                <div id="bookPageContent" class="text-[10px] font-mono text-base-900/80 mt-2 space-y-1 leading-relaxed">
+                  <div class="italic text-[9px] text-base-900/60">Awaiting requirement entry...</div>
+                </div>
+              </div>
+
+              <!-- Page Bottom Seal / Status -->
+              <div class="border-t border-base-900/10 pt-1 flex items-center justify-between font-mono text-[9px] text-base-900/60">
+                <span id="bookPageStatus">STATUS: IDLE</span>
+                <span class="text-green-300 font-bold">● ARCHIVE</span>
+              </div>
+
+            </div>
+
+            <!-- FROST SEAL STAMP ELEMENT (Reddish Orange Wax Seal) -->
+            <div id="waxSealElement" class="hidden absolute inset-0 bg-void/85 z-30 flex flex-col items-center justify-center pointer-events-auto">
+              <div class="w-20 h-20 rounded-full bg-gradient-to-br from-[#E25C3E] to-[#B83E26] text-white border-4 border-[#FF8A6E] flex flex-col items-center justify-center shadow-[0_0_35px_rgba(226,92,62,0.6),0_0_15px_rgba(184,62,38,0.4)] animate-frost-seal select-none">
+                <i data-lucide="shield-check" class="w-6 h-6 text-white mb-0.5"></i>
+                <span class="font-serif font-bold text-[9px] tracking-widest text-center uppercase leading-none text-white drop-shadow">DAEDALUS<br/>SEALED</span>
+              </div>
+              <div class="mt-2 font-mono text-xs text-[#FF8A6E] font-bold uppercase tracking-wider">MANUSCRIPT VERIFIED</div>
+            </div>
+
+          </div>
+
         </div>
+
+        <!-- LEFT SUB-PANEL: CYTOSCAPE GRAPH CONTAINER (GRAPH VIEW — LEANS BLUE — Hidden by default) -->
+        <div id="graphViewContainer" class="hidden flex-1 bg-void/90 relative overflow-hidden">
+          <div id="cy" class="w-full h-full min-h-[260px]"></div>
+          <div class="absolute bottom-2 right-2 text-[10px] font-mono text-blue-200/50 bg-base-900/90 px-2 py-0.5 rounded border border-white/5 pointer-events-none">
+            CYTOSCAPE.JS TOPOLOGY GRAPH
+          </div>
+        </div>
+
+        <!-- SECTION 9c — ALWAYS-VISIBLE PHASE CHECKLIST SIDEBAR (LEANS GREEN) -->
+        <div id="phaseChecklistSidebar" class="w-[180px] bg-base-800 border-l border-white/[0.08] p-3 flex flex-col justify-between shrink-0 font-mono select-none">
+          <div>
+            <div class="text-[10px] font-serif font-bold text-fog-50 uppercase tracking-wider border-b border-white/10 pb-1 mb-2 flex justify-between items-center">
+              <span>PHASES</span>
+              <span class="text-[9px] font-mono text-fog-300">[STAGES]</span>
+            </div>
+
+            <!-- Checklist Rows -->
+            <div class="space-y-1.5 text-[11px]">
+              <div id="chk-planner" onclick="selectPhaseTask('planner')" class="phase-chk-row flex items-center justify-between p-1 rounded hover:bg-base-700 cursor-pointer transition">
+                <div class="flex items-center gap-1.5 text-status-idle">
+                  <span class="glyph font-bold">○</span>
+                  <span class="label font-medium text-fog-200">PLANNER</span>
+                </div>
+              </div>
+
+              <div id="chk-researcher" onclick="selectPhaseTask('researcher')" class="phase-chk-row flex items-center justify-between p-1 rounded hover:bg-base-700 cursor-pointer transition">
+                <div class="flex items-center gap-1.5 text-status-idle">
+                  <span class="glyph font-bold">○</span>
+                  <span class="label font-medium text-fog-200">RESEARCHER</span>
+                </div>
+              </div>
+
+              <div id="chk-developer" onclick="selectPhaseTask('developer')" class="phase-chk-row flex items-center justify-between p-1 rounded hover:bg-base-700 cursor-pointer transition">
+                <div class="flex items-center gap-1.5 text-status-idle">
+                  <span class="glyph font-bold">○</span>
+                  <span class="label font-medium text-fog-200">DEVELOPER</span>
+                </div>
+              </div>
+
+              <div id="chk-tester" onclick="selectPhaseTask('tester')" class="phase-chk-row flex items-center justify-between p-1 rounded hover:bg-base-700 cursor-pointer transition">
+                <div class="flex items-center gap-1.5 text-status-idle">
+                  <span class="glyph font-bold">○</span>
+                  <span class="label font-medium text-fog-200">TESTER</span>
+                </div>
+              </div>
+
+              <div id="chk-healer" onclick="selectPhaseTask('healer')" class="phase-chk-row flex items-center justify-between p-1 rounded hover:bg-base-700 cursor-pointer transition">
+                <div class="flex items-center gap-1.5 text-status-idle">
+                  <span class="glyph font-bold">○</span>
+                  <span class="label font-medium text-fog-200">HEALER</span>
+                </div>
+              </div>
+
+              <div id="chk-github_pr" onclick="selectPhaseTask('github_pr')" class="phase-chk-row flex items-center justify-between p-1 rounded hover:bg-base-700 cursor-pointer transition">
+                <div class="flex items-center gap-1.5 text-status-idle">
+                  <span class="glyph font-bold">○</span>
+                  <span class="label font-medium text-fog-200">PUBLICATION</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-[9px] text-fog-300/60 border-t border-white/5 pt-1 text-center">
+            PIPELINE STAGES
+          </div>
+        </div>
+
       </div>
 
       <!-- Catalogue Entries Header -->
-      <div class="h-8 bg-panel px-4 border-b border-white/10 flex items-center justify-between shrink-0">
+      <div class="h-8 bg-base-800 px-4 border-b border-white/[0.08] flex items-center justify-between shrink-0">
         <div class="flex items-baseline gap-2">
-          <span class="font-serif font-semibold text-xs tracking-wider text-slate-200 uppercase">CATALOGUE ENTRIES</span>
-          <span class="font-mono text-[10px] text-slate-500 uppercase">[PLANNER OUTPUT]</span>
+          <span class="font-serif font-semibold text-xs tracking-wider text-fog-50 uppercase">CATALOGUE ENTRIES</span>
+          <span class="font-mono text-[10px] text-fog-300 uppercase">[PLANNER OUTPUT]</span>
         </div>
-        <span id="taskCountBadge" class="font-mono text-[10px] text-slate-400 bg-archive px-1.5 py-0.5 rounded border border-white/5">0 TASKS</span>
+        <span id="taskCountBadge" class="font-mono text-[10px] text-fog-200 bg-void px-1.5 py-0.5 rounded border border-white/5">0 TASKS</span>
       </div>
 
       <!-- Task List Area -->
       <div id="catalogueEntriesList" class="flex-1 overflow-y-auto p-3 space-y-2 font-mono text-xs">
-        <div class="text-slate-600 italic text-[11px] p-2">No catalogue tasks indexed. Submit a specification or click START DEMO.</div>
+        <div class="text-fog-300/60 italic text-[11px] p-2">No catalogue tasks indexed. Submit a specification or click START DEMO.</div>
       </div>
 
       <!-- Research Context Drawer -->
-      <div id="researchDrawer" class="border-t border-white/10 bg-panel p-3 shrink-0 hidden">
+      <div id="researchDrawer" class="border-t border-white/[0.08] bg-base-800 p-3 shrink-0 hidden">
         <div class="flex items-center justify-between mb-1.5">
           <div class="flex items-baseline gap-2">
-            <span class="font-serif font-semibold text-xs text-brass uppercase">REFERENCE DESK</span>
-            <span class="font-mono text-[10px] text-slate-500 uppercase">[RESEARCH GUIDANCE]</span>
+            <span class="font-serif font-semibold text-xs text-green-300 uppercase">REFERENCE DESK</span>
+            <span class="font-mono text-[10px] text-fog-300 uppercase">[RESEARCH GUIDANCE]</span>
           </div>
-          <button onclick="document.getElementById('researchDrawer').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">
+          <button onclick="document.getElementById('researchDrawer').classList.add('hidden')" class="text-fog-300 hover:text-fog-100">
             <i data-lucide="x" class="w-3 h-3"></i>
           </button>
         </div>
-        <div id="researchContent" class="text-[11px] font-mono text-slate-400 max-h-24 overflow-y-auto leading-relaxed bg-obsidian p-2 rounded border border-white/5">
+        <div id="researchContent" class="text-[11px] font-mono text-fog-200 max-h-24 overflow-y-auto leading-relaxed bg-void p-2 rounded border border-white/5">
           Awaiting researcher context...
         </div>
       </div>
     </section>
 
 
-    <!-- ================= RIGHT PANEL (55% SPLIT) ================= -->
-    <section class="lg:col-span-7 flex flex-col min-h-0 overflow-hidden bg-obsidian">
+    <!-- ================= RIGHT PANEL (55% SPLIT — PLAIN PROFESSIONAL WORKSTATION) ================= -->
+    <section class="lg:col-span-7 flex flex-col min-h-0 overflow-hidden bg-void">
       
       <!-- ================= ZONE B — MANUSCRIPT [SOURCE CODE] (TOP 60%) ================= -->
-      <div class="h-[60%] flex flex-col border-b border-white/10 min-h-0">
+      <div class="h-[60%] flex flex-col border-b border-white/[0.08] min-h-0">
         
         <!-- Zone B Header & File Tabs -->
-        <div class="h-9 bg-panel border-b border-white/10 px-3 flex items-center justify-between shrink-0 overflow-x-auto">
+        <div class="h-9 bg-base-800 border-b border-white/[0.08] px-3 flex items-center justify-between shrink-0 overflow-x-auto">
           <!-- File Tabs Container -->
           <div id="fileTabsContainer" class="flex items-center gap-1 overflow-x-auto py-1">
-            <div class="px-3 py-1 bg-archive text-slate-500 text-xs font-mono rounded border border-white/5">
+            <div class="px-3 py-1 bg-base-900 text-fog-300 text-xs font-mono rounded border border-white/5">
               No files catalogued
             </div>
           </div>
 
           <!-- Manuscript Mode Controls -->
           <div class="flex items-center gap-2 shrink-0 ml-2">
-            <div id="diffBadge" class="hidden items-center gap-1 font-mono text-[10px] bg-brass/10 text-brass border border-brass/30 px-2 py-0.5 rounded">
+            <div id="diffBadge" class="hidden items-center gap-1 font-mono text-[10px] bg-blue-300/10 text-blue-200 border border-blue-300/30 px-2 py-0.5 rounded">
               <span id="diffAdded">+0</span>
               <span id="diffRemoved">-0</span>
             </div>
             <button 
               id="toggleDiffBtn" 
               onclick="toggleDiffView()" 
-              class="font-mono text-[10px] bg-archive hover:bg-elevated border border-white/10 text-slate-300 px-2.5 py-1 rounded flex items-center gap-1 transition"
+              class="font-mono text-[10px] bg-void hover:bg-base-700 border border-white/10 text-fog-200 px-2.5 py-1 rounded flex items-center gap-1 transition"
             >
-              <i data-lucide="git-compare" class="w-3 h-3 text-brass"></i>
+              <i data-lucide="git-compare" class="w-3 h-3 text-blue-300"></i>
               <span id="toggleDiffText">DIFF MODE</span>
             </button>
           </div>
         </div>
 
         <!-- Manuscript Section Title Bar -->
-        <div class="h-6 bg-archive/60 px-3 border-b border-white/5 flex items-center justify-between shrink-0 font-mono text-[10px]">
+        <div class="h-6 bg-base-900 px-3 border-b border-white/5 flex items-center justify-between shrink-0 font-mono text-[10px]">
           <div class="flex items-center gap-2">
-            <span id="manuscriptTitle" class="font-serif text-slate-300 uppercase tracking-wider font-semibold">MANUSCRIPT</span>
-            <span id="manuscriptSubtitle" class="text-slate-500 uppercase">[SOURCE CODE]</span>
+            <span id="manuscriptTitle" class="font-serif text-fog-50 uppercase tracking-wider font-semibold">MANUSCRIPT</span>
+            <span id="manuscriptSubtitle" class="text-fog-300 uppercase">[SOURCE CODE]</span>
           </div>
-          <div id="activeFileMeta" class="text-slate-500">
+          <div id="activeFileMeta" class="text-fog-300/60">
             READ-ONLY ARCHIVE VIEW
           </div>
         </div>
 
-        <!-- Margin Annotation Box (Visible during test failure) -->
-        <div id="marginAnnotation" class="hidden bg-status-failed/10 border-b border-status-failed/30 p-2 px-3 font-mono text-xs flex items-start gap-3 shrink-0">
-          <i data-lucide="alert-triangle" class="w-4 h-4 text-status-failed shrink-0 mt-0.5"></i>
-          <div class="flex-1">
-            <div class="flex items-center gap-2 text-status-failed font-semibold text-[11px]">
-              <span>ANNOTATION</span>
-              <span class="text-slate-400">[ASSERTION FAILURE]</span>
+        <!-- Margin Annotation Box (FOG PAGE CARD STYLE for Test Failures — Fault Rust border) -->
+        <div id="marginAnnotation" class="hidden bg-fog-50 text-base-900 border-l-4 border-rust p-2.5 px-3.5 font-mono text-xs shadow-md shrink-0">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 text-rust font-bold text-[11px] font-serif uppercase tracking-wider">
+                <span>MARGIN ANNOTATION</span>
+                <span class="text-base-900/60 font-mono font-normal text-[10px]">[ASSERTION FAILURE]</span>
+              </div>
+              <div id="annotationText" class="text-base-900 text-[11px] mt-1 font-mono font-medium leading-relaxed">
+                Expected: 429 | Received: 200 at line 42
+              </div>
             </div>
-            <div id="annotationText" class="text-slate-300 text-[11px] mt-0.5 font-mono">
-              Expected: 429 | Received: 200 at line 42
+            <div class="text-[10px] font-mono text-rust border border-rust/40 bg-void text-fog-100 px-2 py-0.5 rounded uppercase">
+              ROUTING TO: REVISION DESK
             </div>
-          </div>
-          <div class="text-[10px] text-brass border border-brass/30 bg-brass/10 px-2 py-0.5 rounded uppercase">
-            ROUTING TO: REVISION DESK
           </div>
         </div>
 
-        <!-- Code Editor Area -->
-        <div class="flex-1 bg-[#0D0E0D] overflow-auto font-mono text-xs relative">
+        <!-- Code Editor Area (Base-900 Floor) -->
+        <div class="flex-1 bg-base-900 overflow-auto font-mono text-xs relative">
           <div id="codeDisplay" class="p-3">
-            <div class="text-slate-600 italic">Select a manuscript volume tab to inspect source code.</div>
+            <div class="text-fog-300/60 italic">Select a manuscript volume tab to inspect source code.</div>
           </div>
         </div>
       </div>
 
 
-      <!-- ================= ZONE C — PROOF DESK [TEST RUNNER] (BOTTOM 40%) ================= -->
-      <div class="h-[40%] flex flex-col bg-archive min-h-0">
+      <!-- ================= ZONE C — PROOF DESK [SUBPROCESS TEST RUNNER] (BOTTOM 40%) ================= -->
+      <div class="h-[40%] flex flex-col bg-base-900 min-h-0">
         
         <!-- Zone C Header -->
-        <div class="h-9 bg-panel px-3 border-b border-white/10 flex items-center justify-between shrink-0">
+        <div class="h-9 bg-base-800 px-3 border-b border-white/[0.08] flex items-center justify-between shrink-0">
           <div class="flex items-baseline gap-2">
-            <span class="font-serif font-semibold text-xs tracking-wider text-slate-100 uppercase">PROOF DESK</span>
-            <span class="font-mono text-[10px] text-slate-500 uppercase">[SUBPROCESS TEST RUNNER]</span>
+            <span class="font-serif font-semibold text-xs tracking-wider text-fog-50 uppercase">PROOF DESK</span>
+            <span class="font-mono text-[10px] text-fog-300 uppercase">[SUBPROCESS TEST RUNNER]</span>
           </div>
 
           <!-- Log Filter Chips -->
           <div class="flex items-center gap-1 font-mono text-[10px]">
-            <button onclick="setLogFilter('ALL')" class="log-filter-btn active bg-brass/20 text-brass border border-brass/40 px-2 py-0.5 rounded">ALL</button>
-            <button onclick="setLogFilter('PYTEST')" class="log-filter-btn bg-obsidian text-slate-400 border border-white/10 px-2 py-0.5 rounded hover:text-slate-200">PYTEST</button>
-            <button onclick="setLogFilter('SYSTEM')" class="log-filter-btn bg-obsidian text-slate-400 border border-white/10 px-2 py-0.5 rounded hover:text-slate-200">SYSTEM</button>
-            <button onclick="setLogFilter('EVENTS')" class="log-filter-btn bg-obsidian text-slate-400 border border-white/10 px-2 py-0.5 rounded hover:text-slate-200">EVENTS</button>
-            <button onclick="clearTerminal()" title="Clear Output" class="ml-2 text-slate-500 hover:text-slate-300">
+            <button onclick="setLogFilter('ALL')" class="log-filter-btn active bg-blue-300/20 text-blue-200 border border-blue-300/40 px-2 py-0.5 rounded">ALL</button>
+            <button onclick="setLogFilter('PYTEST')" class="log-filter-btn bg-void text-fog-300 border border-white/10 px-2 py-0.5 rounded hover:text-fog-100">PYTEST</button>
+            <button onclick="setLogFilter('SYSTEM')" class="log-filter-btn bg-void text-fog-300 border border-white/10 px-2 py-0.5 rounded hover:text-fog-100">SYSTEM</button>
+            <button onclick="clearTerminal()" title="Clear Output" class="ml-2 text-fog-300 hover:text-fog-100">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
           </div>
         </div>
 
-        <!-- Terminal Log Window -->
-        <div id="terminalWindow" class="flex-1 bg-obsidian p-3 font-mono text-[11px] leading-relaxed overflow-y-auto space-y-1 select-text">
-          <div class="text-slate-600">[SYSTEM] Proof Desk terminal initialized. Awaiting workflow events...</div>
+        <!-- Terminal Log Window (Plain Professional Void Base) -->
+        <div id="terminalWindow" class="flex-1 bg-void p-3 font-mono text-[11px] leading-relaxed overflow-y-auto space-y-1 select-text">
+          <div class="text-fog-300/60">[SYSTEM] Proof Desk terminal initialized. Awaiting workflow events...</div>
         </div>
 
       </div>
@@ -412,32 +652,32 @@
   </main>
 
 
-  <!-- ================= PUBLICATION HUD (SLIDE-UP DRAWER) ================= -->
-  <div id="publicationHUD" class="fixed bottom-0 left-0 right-0 bg-panel border-t-2 border-brass shadow-2xl transition-transform duration-500 transform translate-y-full z-30 font-mono">
+  <!-- ================= PUBLICATION HUD (FOG PAGE SLIDE-UP DRAWER WITH FROST SEAL) ================= -->
+  <div id="publicationHUD" class="fixed bottom-0 left-0 right-0 bg-fog-50 text-base-900 border-t-4 border-blue-300 shadow-[0_-10px_30px_rgba(10,18,16,0.6)] transition-transform duration-500 transform translate-y-full z-30 font-mono">
     <div class="max-w-7xl mx-auto p-4 px-6 flex flex-col md:flex-row items-center justify-between gap-4">
       
       <!-- Left: Success Checklist -->
       <div class="flex items-center gap-6">
         <div class="flex flex-col">
           <div class="flex items-center gap-2">
-            <span class="font-serif font-bold text-base text-brass uppercase">PUBLICATION</span>
-            <span class="text-xs text-slate-400 uppercase">[PULL REQUEST]</span>
+            <span class="font-serif font-bold text-lg text-base-900 uppercase tracking-wider">PUBLICATION</span>
+            <span class="text-xs text-base-900/60 font-mono">[PULL REQUEST]</span>
           </div>
-          <span class="text-xs text-status-passed font-semibold tracking-wider uppercase mt-0.5">✓ MANUSCRIPT VERIFIED</span>
+          <span class="text-xs text-green-400 font-bold tracking-wider uppercase mt-0.5">✓ MANUSCRIPT VERIFIED</span>
         </div>
 
-        <div class="h-8 w-[1px] bg-white/10 hidden sm:block"></div>
+        <div class="h-8 w-[1px] bg-base-900/20 hidden sm:block"></div>
 
-        <div class="hidden sm:flex items-center gap-4 text-xs">
-          <div class="flex items-center gap-1.5 text-status-passed">
+        <div class="hidden sm:flex items-center gap-4 text-xs font-semibold">
+          <div class="flex items-center gap-1.5 text-green-400">
             <i data-lucide="check-circle-2" class="w-4 h-4"></i>
             <span>FABRICATED</span>
           </div>
-          <div class="flex items-center gap-1.5 text-status-passed">
+          <div class="flex items-center gap-1.5 text-green-400">
             <i data-lucide="check-circle-2" class="w-4 h-4"></i>
             <span>VERIFIED</span>
           </div>
-          <div class="flex items-center gap-1.5 text-status-passed">
+          <div class="flex items-center gap-1.5 text-green-400">
             <i data-lucide="check-circle-2" class="w-4 h-4"></i>
             <span>REVIEW COMPLETE</span>
           </div>
@@ -446,10 +686,10 @@
 
       <!-- Center / Right: Git Command & PR Link -->
       <div class="flex items-center gap-3 w-full md:w-auto">
-        <div class="bg-obsidian border border-white/10 rounded px-3 py-1.5 flex items-center gap-2 text-xs flex-1 md:flex-initial">
-          <span class="text-slate-500">EDITION:</span>
-          <span id="prBranchName" class="text-slate-200">feat/daedalus-limiter</span>
-          <button onclick="copyCheckoutCmd()" title="Copy checkout command" class="text-brass hover:text-brass-light ml-2">
+        <div class="bg-base-900/10 border border-base-900/20 rounded px-3 py-1.5 flex items-center gap-2 text-xs flex-1 md:flex-initial text-base-900">
+          <span class="text-base-900/60">EDITION:</span>
+          <span id="prBranchName" class="font-bold">feat/daedalus-limiter</span>
+          <button onclick="copyCheckoutCmd()" title="Copy checkout command" class="text-blue-400 hover:text-blue-300 ml-2">
             <i data-lucide="copy" class="w-3.5 h-3.5"></i>
           </button>
         </div>
@@ -458,13 +698,13 @@
           id="prPublicationLink" 
           href="#" 
           target="_blank" 
-          class="bg-brass hover:bg-brass-light text-obsidian font-bold text-xs px-5 py-2.5 rounded flex items-center gap-2 transition shadow-lg shadow-brass/20 shrink-0"
+          class="bg-blue-300 hover:bg-blue-200 text-void font-bold text-xs px-5 py-2.5 rounded flex items-center gap-2 transition shadow-md shadow-blue-300/20 shrink-0"
         >
           <span>REVIEW PUBLICATION</span>
           <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
         </a>
 
-        <button onclick="dismissPublicationHUD()" class="text-slate-500 hover:text-slate-300 p-1">
+        <button onclick="dismissPublicationHUD()" class="text-base-900/50 hover:text-base-900 p-1">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
@@ -486,6 +726,7 @@
       startTime: null,
       timerInterval: null,
       activeNode: 'planner',
+      catalogueView: 'MANUSCRIPT', // 'MANUSCRIPT' or 'GRAPH'
       files: new Map(), // filename -> content
       diffs: new Map(), // filename -> diff content
       activeFile: null,
@@ -498,7 +739,7 @@
       eventSource: null,
     };
 
-    // Nodes Map for Cytoscape.js Graph
+    // Nodes Map for Cytoscape.js Topology Graph
     const nodesConfig = [
       { id: 'planner', primary: 'CATALOGUE', secondary: '[PLANNER]' },
       { id: 'researcher', primary: 'REFERENCE DESK', secondary: '[RESEARCHER]' },
@@ -508,7 +749,7 @@
       { id: 'github_pr', primary: 'PUBLICATION', secondary: '[PULL REQUEST]' }
     ];
 
-    // Cytoscape.js Topology Initialization
+    // SECTION 9a — REBUILT CYTOSCAPE GRAPH VIEW (v7 Multi-Shade Fog/Blue/Green Theme)
     let cy = cytoscape({
       container: document.getElementById('cy'),
       boxSelectionEnabled: false,
@@ -518,52 +759,52 @@
           selector: 'node',
           style: {
             'shape': 'round-rectangle',
-            'background-color': '#111311',
-            'border-color': 'rgba(255, 255, 255, 0.15)',
+            'background-color': '#101B1D',
+            'border-color': 'rgba(201, 220, 230, 0.16)',
             'border-width': 1,
-            'width': '140px',
-            'height': '42px',
+            'width': '120px',
+            'height': '38px',
             'label': 'data(label)',
-            'color': '#E2E8F0',
+            'color': '#C9DCE6',
             'font-family': 'JetBrains Mono',
-            'font-size': '9px',
+            'font-size': '8.5px',
             'text-valign': 'center',
             'text-halign': 'center',
             'text-wrap': 'wrap',
-            'padding': '6px',
+            'padding': '4px',
           }
         },
         {
           selector: 'node[status = "active"]',
           style: {
-            'border-color': '#C9A227',
+            'border-color': '#6E93A8',
             'border-width': 2,
-            'background-color': '#171A17',
-            'color': '#C9A227',
+            'background-color': '#16262A',
+            'color': '#9FBFCF',
           }
         },
         {
           selector: 'node[status = "passed"]',
           style: {
-            'border-color': '#10B981',
+            'border-color': '#4C8670',
             'border-width': 1.5,
-            'color': '#10B981',
+            'color': '#9FCFB9',
           }
         },
         {
           selector: 'node[status = "failed"]',
           style: {
-            'border-color': '#F43F5E',
+            'border-color': '#B1493C',
             'border-width': 2,
-            'color': '#F43F5E',
+            'color': '#B1493C',
           }
         },
         {
           selector: 'edge',
           style: {
             'width': 1.5,
-            'line-color': 'rgba(255, 255, 255, 0.15)',
-            'target-arrow-color': 'rgba(255, 255, 255, 0.2)',
+            'line-color': 'rgba(110, 147, 168, 0.3)',
+            'target-arrow-color': 'rgba(110, 147, 168, 0.5)',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'arrow-scale': 0.8,
@@ -572,20 +813,20 @@
         {
           selector: 'edge[active = "true"]',
           style: {
-            'line-color': '#C9A227',
-            'target-arrow-color': '#C9A227',
+            'line-color': '#6E93A8',
+            'target-arrow-color': '#6E93A8',
             'width': 2,
           }
         }
       ],
       elements: {
         nodes: [
-          { data: { id: 'planner', label: 'CATALOGUE\n[PLANNER]', status: 'idle' } },
-          { data: { id: 'researcher', label: 'REFERENCE DESK\n[RESEARCHER]', status: 'idle' } },
-          { data: { id: 'developer', label: "AUTHOR'S DESK\n[DEVELOPER]", status: 'idle' } },
-          { data: { id: 'tester', label: 'PROOF DESK\n[TESTER]', status: 'idle' } },
-          { data: { id: 'healer', label: 'REVISION DESK\n[HEALER]', status: 'idle' } },
-          { data: { id: 'github_pr', label: 'PUBLICATION\n[PULL REQUEST]', status: 'idle' } }
+          { data: { id: 'planner', label: 'CATALOGUE\n[PLANNER]', status: 'idle' }, position: { x: 70, y: 45 } },
+          { data: { id: 'researcher', label: 'REFERENCE DESK\n[RESEARCHER]', status: 'idle' }, position: { x: 210, y: 45 } },
+          { data: { id: 'developer', label: "AUTHOR'S DESK\n[DEVELOPER]", status: 'idle' }, position: { x: 350, y: 45 } },
+          { data: { id: 'tester', label: 'PROOF DESK\n[TESTER]', status: 'idle' }, position: { x: 350, y: 150 } },
+          { data: { id: 'healer', label: 'REVISION DESK\n[HEALER]', status: 'idle' }, position: { x: 210, y: 150 } },
+          { data: { id: 'github_pr', label: 'PUBLICATION\n[PULL REQUEST]', status: 'idle' }, position: { x: 70, y: 150 } }
         ],
         edges: [
           { data: { source: 'planner', target: 'researcher' } },
@@ -597,17 +838,52 @@
         ]
       },
       layout: {
-        name: 'grid',
-        rows: 2,
-        cols: 3,
-        padding: 20
+        name: 'preset'
       }
     });
 
     cy.userZoomingEnabled(false);
     cy.userPanningEnabled(false);
 
-    // Node click handler
+    // Section 9a — ResizeObserver on Cytoscape container to guarantee fit
+    const cyContainer = document.getElementById('cy');
+    if (window.ResizeObserver && cyContainer) {
+      const resizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(() => {
+          cy.resize();
+          cy.fit(undefined, 30);
+        });
+      });
+      resizeObserver.observe(cyContainer);
+    }
+
+    // Switch Catalogue View (MANUSCRIPT vs GRAPH)
+    function switchCatalogueView(viewMode) {
+      state.catalogueView = viewMode;
+      const bookContainer = document.getElementById('manuscriptBookContainer');
+      const graphContainer = document.getElementById('graphViewContainer');
+      const btnMs = document.getElementById('viewBtnManuscript');
+      const btnGr = document.getElementById('viewBtnGraph');
+
+      if (viewMode === 'MANUSCRIPT') {
+        bookContainer.classList.remove('hidden');
+        graphContainer.classList.add('hidden');
+        btnMs.className = 'px-2.5 py-0.5 rounded text-green-300 bg-base-900 font-semibold shadow-sm transition';
+        btnGr.className = 'px-2.5 py-0.5 rounded text-fog-300 hover:text-fog-50 transition';
+      } else {
+        bookContainer.classList.add('hidden');
+        graphContainer.classList.remove('hidden');
+        btnGr.className = 'px-2.5 py-0.5 rounded text-blue-300 bg-base-900 font-semibold shadow-sm transition';
+        btnMs.className = 'px-2.5 py-0.5 rounded text-fog-300 hover:text-fog-50 transition';
+        
+        requestAnimationFrame(() => {
+          cy.resize();
+          cy.fit(undefined, 30);
+        });
+      }
+    }
+
+    // Node click handler for Graph
     cy.on('tap', 'node', function(evt){
       const node = evt.target;
       selectGraphNode(node.id());
@@ -633,6 +909,157 @@
         if (status === 'active') node.addClass('active');
         if (status === 'passed') node.addClass('passed');
         if (status === 'failed') node.addClass('failed');
+      }
+
+      // SECTION 9c — UPDATE PHASE CHECKLIST SIDEBAR
+      updatePhaseChecklist(nodeId, status);
+
+      // SECTION 19a — THE LIVING MANUSCRIPT PAGE TURN ENGINE
+      updateLivingManuscriptPage(nodeId, status);
+    }
+
+    // SECTION 9c — PHASE CHECKLIST SIDEBAR RENDERER (v7 Retint — Leans Green)
+    function updatePhaseChecklist(activeNodeId, status) {
+      const phases = ['planner', 'researcher', 'developer', 'tester', 'healer', 'github_pr'];
+      let foundActive = false;
+
+      phases.forEach(p => {
+        const row = document.getElementById(`chk-${p}`);
+        if (!row) return;
+
+        const glyph = row.querySelector('.glyph');
+        const label = row.querySelector('.label');
+
+        if (p === activeNodeId) {
+          foundActive = true;
+          if (status === 'failed') {
+            glyph.innerText = '◉';
+            glyph.className = 'glyph font-bold text-rust animate-pulse';
+            label.className = 'label font-bold text-rust';
+          } else if (status === 'passed') {
+            glyph.innerText = '✓';
+            glyph.className = 'glyph font-bold text-green-400';
+            label.className = 'label font-semibold text-fog-100';
+          } else {
+            glyph.innerText = '◉';
+            glyph.className = 'glyph font-bold text-green-200 animate-pulse';
+            label.className = 'label font-bold text-green-200';
+          }
+        } else if (!foundActive) {
+          glyph.innerText = '✓';
+          glyph.className = 'glyph font-bold text-green-400';
+          label.className = 'label font-medium text-fog-200';
+        } else {
+          glyph.innerText = '○';
+          glyph.className = 'glyph font-bold text-fog-300';
+          label.className = 'label font-medium text-fog-300/70';
+        }
+      });
+    }
+
+    function selectPhaseTask(phaseId) {
+      appendLog('SYSTEM', `Phase Checklist focus: [${phaseId.toUpperCase()}]`);
+      selectGraphNode(phaseId);
+    }
+
+    // SECTION 19a — THE LIVING MANUSCRIPT PAGE ENGINE (v7 Theme)
+    function updateLivingManuscriptPage(nodeId, status) {
+      const rightPage = document.getElementById('bookRightPage');
+      const pageNum = document.getElementById('bookPageNum');
+      const dropCap = document.getElementById('bookDropCap');
+      const chapterTitle = document.getElementById('bookChapterTitle');
+      const techLabel = document.getElementById('bookTechnicalLabel');
+      const pageContent = document.getElementById('bookPageContent');
+      const pageStatus = document.getElementById('bookPageStatus');
+      const waxSeal = document.getElementById('waxSealElement');
+
+      rightPage.classList.add('book-page-turning');
+      setTimeout(() => {
+        rightPage.classList.remove('book-page-turning');
+      }, 300);
+
+      switch (nodeId) {
+        case 'planner':
+          pageNum.innerText = 'PAGE I';
+          dropCap.innerText = 'Ⅰ';
+          chapterTitle.innerText = 'THE CATALOGUE IS OPENED';
+          techLabel.innerText = '[PLANNER]';
+          pageContent.innerHTML = `
+            <div>Herein the specification is catalogued into actionable tasks.</div>
+            <div class="text-green-300 font-bold mt-1">• 01 Bucket data structure</div>
+            <div class="text-green-300 font-bold">• 02 Middleware wrapper</div>
+            <div class="text-green-300 font-bold">• 03 Pytest suite</div>
+          `;
+          pageStatus.innerText = 'STATUS: INDEXING';
+          break;
+
+        case 'researcher':
+          pageNum.innerText = 'PAGE II';
+          dropCap.innerText = 'Ⅱ';
+          chapterTitle.innerText = 'THE REFERENCE DESK IS CONSULTED';
+          techLabel.innerText = '[RESEARCHER]';
+          pageContent.innerHTML = `
+            <div>Architecture guidance retrieved from vector memory.</div>
+            <div class="italic text-[9px] mt-1 text-base-900/70">"Use monotonic timestamps for refill estimation."</div>
+          `;
+          pageStatus.innerText = 'STATUS: RESEARCHING';
+          break;
+
+        case 'developer':
+          pageNum.innerText = 'PAGE III';
+          dropCap.innerText = 'Ⅲ';
+          chapterTitle.innerText = "THE AUTHOR'S DESK";
+          techLabel.innerText = '[DEVELOPER]';
+          pageContent.innerHTML = `
+            <div>Source manuscript files authored:</div>
+            <div class="text-base-900 font-bold mt-1">VOL. 01 app/rate_limiter.py</div>
+            <div class="text-base-900 font-bold">VOL. 02 tests/test_limiter.py</div>
+          `;
+          pageStatus.innerText = 'STATUS: FABRICATING';
+          break;
+
+        case 'tester':
+          if (status === 'failed') {
+            pageNum.innerText = 'PAGE IV';
+            dropCap.innerText = 'Ⅳ';
+            chapterTitle.innerText = 'PROVING FAULT DETECTED';
+            techLabel.innerText = '[TESTER]';
+            pageContent.innerHTML = `
+              <div class="text-rust font-bold">AssertionError on line 42</div>
+              <div class="text-[9px] text-base-900/80 bg-rust/10 p-1 border-l-2 border-rust mt-1">
+                Expected: False | Received: True
+              </div>
+            `;
+            pageStatus.innerText = 'STATUS: FAULT DETECTED';
+          } else {
+            pageNum.innerText = 'PAGE IV';
+            dropCap.innerText = 'Ⅳ';
+            chapterTitle.innerText = 'THE PROOF IS SOUGHT';
+            techLabel.innerText = '[TESTER]';
+            pageContent.innerHTML = `
+              <div>Executing subprocess pytest suite in isolated sandbox.</div>
+              <div class="text-green-400 font-bold mt-1">✓ test_bucket_capacity PASSED</div>
+            `;
+            pageStatus.innerText = 'STATUS: VERIFYING';
+          }
+          break;
+
+        case 'healer':
+          pageNum.innerText = 'PAGE IV·a';
+          dropCap.innerText = 'Ⅳ·a';
+          chapterTitle.innerText = 'A REVISION IS UNDERTAKEN';
+          techLabel.innerText = '[HEALER]';
+          pageContent.innerHTML = `
+            <div class="line-through text-rust">return True # Faulty logic</div>
+            <div class="text-green-400 font-bold mt-1">+ return False # Corrected patch</div>
+          `;
+          pageStatus.innerText = 'STATUS: REVISING';
+          break;
+
+        case 'github_pr':
+          waxSeal.classList.remove('hidden');
+          pageStatus.innerText = 'STATUS: SEALED';
+          break;
       }
     }
 
@@ -682,10 +1109,10 @@
       text.innerText = statusText;
 
       dot.className = 'w-2 h-2 rounded-full ';
-      if (statusType === 'running') dot.classList.add('bg-status-running', 'animate-pulse');
-      else if (statusType === 'passed') dot.classList.add('bg-status-passed');
-      else if (statusType === 'failed') dot.classList.add('bg-status-failed');
-      else dot.classList.add('bg-status-idle');
+      if (statusType === 'running') dot.classList.add('bg-green-200', 'animate-pulse');
+      else if (statusType === 'passed') dot.classList.add('bg-green-400');
+      else if (statusType === 'failed') dot.classList.add('bg-rust');
+      else dot.classList.add('bg-fog-300');
     }
 
     // Dispatching Real Workflow Execution
@@ -873,16 +1300,16 @@
 
       tasks.forEach((task, idx) => {
         const item = document.createElement('div');
-        item.className = 'p-2.5 bg-obsidian border border-white/5 rounded hover:border-brass/40 transition cursor-pointer flex items-start gap-2.5 group';
+        item.className = 'p-2.5 bg-void border border-white/5 rounded hover:border-green-300/40 transition cursor-pointer flex items-start gap-2.5 group';
         item.onclick = () => selectTask(task);
 
         item.innerHTML = `
-          <span class="text-brass font-bold text-[11px] shrink-0 mt-0.5">✓ 0${idx + 1}</span>
+          <span class="text-green-300 font-bold text-[11px] shrink-0 mt-0.5">✓ 0${idx + 1}</span>
           <div class="flex-1 min-w-0">
-            <div class="text-slate-200 font-semibold text-xs group-hover:text-brass transition truncate">${task.title}</div>
-            <div class="text-[10px] text-slate-500 truncate mt-0.5">${task.description || task.id}</div>
+            <div class="text-fog-50 font-semibold text-xs group-hover:text-green-300 transition truncate">${task.title}</div>
+            <div class="text-[10px] text-fog-300 truncate mt-0.5">${task.description || task.id}</div>
           </div>
-          <span class="text-[10px] text-slate-600 shrink-0 font-mono">[${task.id}]</span>
+          <span class="text-[10px] text-fog-300/60 shrink-0 font-mono">[${task.id}]</span>
         `;
         container.appendChild(item);
       });
@@ -890,7 +1317,6 @@
 
     function selectTask(task) {
       appendLog('SYSTEM', `Task focused: ${task.id} — ${task.title}`);
-      // Find matching file if any
       for (const [filename] of state.files) {
         if (filename.includes(task.id.toLowerCase()) || filename.includes('limiter')) {
           switchToFileTab(filename);
@@ -931,8 +1357,8 @@
 
         tab.className = `px-3 py-1 text-xs font-mono rounded flex items-center gap-2 border transition shrink-0 ${
           isActive 
-            ? 'bg-archive text-brass border-brass/40 font-semibold' 
-            : 'bg-obsidian text-slate-400 border-white/5 hover:text-slate-200'
+            ? 'bg-base-900 text-blue-200 border-blue-300/40 font-semibold' 
+            : 'bg-void text-fog-300 border-white/5 hover:text-fog-100'
         }`;
         tab.onclick = () => switchToFileTab(filename);
         tab.innerHTML = `
@@ -960,7 +1386,7 @@
     function renderManuscriptContent() {
       const display = document.getElementById('codeDisplay');
       if (!state.activeFile || !state.files.has(state.activeFile)) {
-        display.innerHTML = '<div class="text-slate-600 italic">Select a manuscript volume tab to inspect source code.</div>';
+        display.innerHTML = '<div class="text-fog-300/60 italic">Select a manuscript volume tab to inspect source code.</div>';
         return;
       }
 
@@ -980,7 +1406,6 @@
           lineClass += ' failed-line';
         }
 
-        // Escape HTML
         const escaped = lineText
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
@@ -989,7 +1414,7 @@
         html += `
           <div class="${lineClass}">
             <span class="line-number">${lineNum}</span>
-            <span class="text-slate-300 font-mono whitespace-pre">${escaped}</span>
+            <span class="text-fog-100 font-mono whitespace-pre">${escaped}</span>
           </div>
         `;
       });
@@ -1018,15 +1443,15 @@
       const line = document.createElement('div');
       line.className = 'flex items-start gap-2 text-[11px] font-mono leading-relaxed';
 
-      let catColor = 'text-slate-500';
-      if (category === 'PYTEST') catColor = 'text-status-running';
-      if (category === 'SYSTEM') catColor = 'text-brass';
-      if (category === 'EVENTS') catColor = 'text-status-active';
+      let catColor = 'text-fog-300';
+      if (category === 'PYTEST') catColor = 'text-green-200';
+      if (category === 'SYSTEM') catColor = 'text-blue-300';
+      if (category === 'EVENTS') catColor = 'text-blue-200';
 
       line.innerHTML = `
-        <span class="text-slate-600 shrink-0">[${new Date().toLocaleTimeString()}]</span>
+        <span class="text-fog-300/60 shrink-0">[${new Date().toLocaleTimeString()}]</span>
         <span class="${catColor} shrink-0 uppercase font-semibold">[${category}]</span>
-        <span class="text-slate-300 break-all">${escapeHtml(text)}</span>
+        <span class="text-fog-100 break-all">${escapeHtml(text)}</span>
       `;
 
       container.appendChild(line);
@@ -1041,28 +1466,27 @@
       state.activeFilter = filter;
       document.querySelectorAll('.log-filter-btn').forEach(btn => {
         if (btn.innerText === filter) {
-          btn.className = 'log-filter-btn active bg-brass/20 text-brass border border-brass/40 px-2 py-0.5 rounded';
+          btn.className = 'log-filter-btn active bg-blue-300/20 text-blue-200 border border-blue-300/40 px-2 py-0.5 rounded';
         } else {
-          btn.className = 'log-filter-btn bg-obsidian text-slate-400 border border-white/10 px-2 py-0.5 rounded hover:text-slate-200';
+          btn.className = 'log-filter-btn bg-void text-fog-300 border border-white/10 px-2 py-0.5 rounded hover:text-fog-100';
         }
       });
 
-      // Re-render terminal logs
       const container = document.getElementById('terminalWindow');
       container.innerHTML = '';
       state.logs.forEach(log => {
         if (filter === 'ALL' || log.category === filter) {
           const line = document.createElement('div');
           line.className = 'flex items-start gap-2 text-[11px] font-mono leading-relaxed';
-          let catColor = 'text-slate-500';
-          if (log.category === 'PYTEST') catColor = 'text-status-running';
-          if (log.category === 'SYSTEM') catColor = 'text-brass';
-          if (log.category === 'EVENTS') catColor = 'text-status-active';
+          let catColor = 'text-fog-300';
+          if (log.category === 'PYTEST') catColor = 'text-green-200';
+          if (log.category === 'SYSTEM') catColor = 'text-blue-300';
+          if (log.category === 'EVENTS') catColor = 'text-blue-200';
 
           line.innerHTML = `
-            <span class="text-slate-600 shrink-0">[${log.time}]</span>
+            <span class="text-fog-300/60 shrink-0">[${log.time}]</span>
             <span class="${catColor} shrink-0 uppercase font-semibold">[${log.category}]</span>
-            <span class="text-slate-300 break-all">${escapeHtml(log.text)}</span>
+            <span class="text-fog-100 break-all">${escapeHtml(log.text)}</span>
           `;
           container.appendChild(line);
         }
@@ -1072,7 +1496,7 @@
 
     function clearTerminal() {
       state.logs = [];
-      document.getElementById('terminalWindow').innerHTML = '<div class="text-slate-600">[SYSTEM] Terminal logs cleared.</div>';
+      document.getElementById('terminalWindow').innerHTML = '<div class="text-fog-300/60">[SYSTEM] Terminal logs cleared.</div>';
     }
 
     // Publication HUD Drawer
@@ -1104,16 +1528,17 @@
       state.tasks = [];
       hideMarginAnnotation();
       dismissPublicationHUD();
-      document.getElementById('fileTabsContainer').innerHTML = '<div class="px-3 py-1 bg-archive text-slate-500 text-xs font-mono rounded border border-white/5">No files catalogued</div>';
-      document.getElementById('codeDisplay').innerHTML = '<div class="text-slate-600 italic">Select a manuscript volume tab to inspect source code.</div>';
-      document.getElementById('terminalWindow').innerHTML = '<div class="text-slate-600">[SYSTEM] Proof Desk terminal reset.</div>';
+      document.getElementById('waxSealElement').classList.add('hidden');
+      document.getElementById('fileTabsContainer').innerHTML = '<div class="px-3 py-1 bg-base-900 text-fog-300 text-xs font-mono rounded border border-white/5">No files catalogued</div>';
+      document.getElementById('codeDisplay').innerHTML = '<div class="text-fog-300/60 italic">Select a manuscript volume tab to inspect source code.</div>';
+      document.getElementById('terminalWindow').innerHTML = '<div class="text-fog-300/60">[SYSTEM] Proof Desk terminal reset.</div>';
       updateWorkspaceStats();
 
-      // Reset Cytoscape graph
+      // Reset Cytoscape graph & Phase Checklist & Living Manuscript
       nodesConfig.forEach(n => updateGraphNodeState(n.id, 'idle'));
     }
 
-    // ================= DETERMINISTIC 11-STAGE DEMO ENGINE =================
+    // ================= DETERMINISTIC 11-STAGE V7 DEMO ENGINE =================
     async function runDemoMode() {
       resetWorkspace();
       startTimer();
@@ -1121,13 +1546,13 @@
       
       const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
-      // Stage 1: Request Submitted -> Planning
+      // Stage 1: Request Submitted -> Planning (Page I)
       setGlobalStatus('CATALOGUING SPEC', 'running');
       updateGraphNodeState('planner', 'active');
-      appendLog('SYSTEM', 'Demo sequence initiated. Specification submitted to Catalogue.');
+      appendLog('SYSTEM', 'V7 Multi-Shade Fog sequence initiated. Page I opened.');
       await delay(1200);
 
-      // Stage 2: Catalogue Populates
+      // Stage 2: Catalogue Populates (Page II)
       updateGraphNodeState('planner', 'passed');
       updateGraphNodeState('researcher', 'active');
       renderCatalogueTasks([
@@ -1146,7 +1571,7 @@
       appendLog('EVENTS', '[RESEARCHER] Architecture guidance retrieved from vector cache.');
       await delay(1400);
 
-      // Stage 4: Developer Authoring
+      // Stage 4: Developer Authoring (Page III)
       const limiterCode = `import time
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -1194,13 +1619,13 @@ def test_rate_limit_exceeded():
       appendLog('EVENTS', "[DEVELOPER] Author's Desk generated 2 manuscript files.");
       await delay(1500);
 
-      // Stage 5: Pytest Execution
+      // Stage 5: Pytest Execution (Page IV)
       setGlobalStatus('VERIFYING PROOF', 'running');
       appendLog('PYTEST', '$ pytest -v --tb=short tests/test_limiter.py');
       appendLog('PYTEST', 'tests/test_limiter.py::test_bucket_capacity PASSED');
       await delay(1000);
 
-      // Stage 6: Test Failure & Margin Annotation
+      // Stage 6: Test Failure & Fog Margin Annotation
       appendLog('PYTEST', 'tests/test_limiter.py::test_rate_limit_exceeded FAILED');
       appendLog('PYTEST', 'E   AssertionError: assert True is False');
       appendLog('PYTEST', 'E   Expected: False | Received: True at tests/test_limiter.py:42');
@@ -1211,7 +1636,7 @@ def test_rate_limit_exceeded():
       switchToFileTab('tests/test_limiter.py');
       await delay(2200);
 
-      // Stage 7: Revision Desk / Self-Healing
+      // Stage 7: Revision Desk / Self-Healing (Page IV·a)
       setGlobalStatus('REVISING MANUSCRIPT', 'running');
       appendLog('EVENTS', '[HEALER] Revision Desk activated. Synthesizing bug fix patch...');
       await delay(1800);
@@ -1247,7 +1672,7 @@ def test_rate_limit_exceeded():
       updateGraphNodeState('github_pr', 'active');
       await delay(1200);
 
-      // Stage 11: Publication HUD
+      // Stage 11: Frost Seal Stamp & Fog Publication HUD
       updateGraphNodeState('github_pr', 'passed');
       setGlobalStatus('MANUSCRIPT VERIFIED', 'passed');
       stopTimer();
