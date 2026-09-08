@@ -7,6 +7,55 @@ from app.producer.gateway import GenerationUnavailable, LLMGateway
 from app.schemas import TaskBreakdown
 
 
+def test_persistent_cache_reuses_validated_response(tmp_path):
+    cache_path = str(tmp_path / "llm_cache.sqlite3")
+
+    first = LLMGateway.__new__(LLMGateway)
+    first.cache_ttl = 900
+    first.cache_size = 64
+    first._cache = OrderedDict()
+    first._cache_connection = first._open_cache_at_path(cache_path)
+    first._store_cached(
+        ("TaskBreakdown", "gemini-test", "repeat this prompt"),
+        TaskBreakdown(epic_title="Cached", architecture_overview="Stored", tasks=[]),
+    )
+
+    second = LLMGateway.__new__(LLMGateway)
+    second.cache_ttl = 900
+    second.cache_size = 64
+    second._cache = OrderedDict()
+    second._cache_connection = second._open_cache_at_path(cache_path)
+
+    result = second._load_persisted(
+        ("TaskBreakdown", "gemini-test", "repeat this prompt"), TaskBreakdown
+    )
+
+    assert result is not None
+    assert result.epic_title == "Cached"
+
+
+def test_offline_fallback_is_persisted_for_repeated_requests(tmp_path):
+    gateway = LLMGateway.__new__(LLMGateway)
+    gateway.cache_ttl = 900
+    gateway.cache_size = 64
+    gateway._cache = OrderedDict()
+    gateway._cache_connection = gateway._open_cache_at_path(str(tmp_path / "llm_cache.sqlite3"))
+
+    result = gateway._store_offline_result(
+        ("CodePatch", "offline", "Build a simple calculator application."),
+        __import__("app.schemas", fromlist=["CodePatch"]).CodePatch,
+        "Build a simple calculator application.",
+    )
+
+    cached = gateway._load_persisted(
+        ("CodePatch", "offline", "Build a simple calculator application."),
+        __import__("app.schemas", fromlist=["CodePatch"]).CodePatch,
+    )
+
+    assert cached is not None
+    assert cached.model_dump() == result.model_dump()
+
+
 def test_gemini_uses_vertex_adc_by_default(monkeypatch):
     calls = []
 

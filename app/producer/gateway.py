@@ -2,6 +2,8 @@ import json
 import os
 import time
 import asyncio
+import hashlib
+import sqlite3
 from collections import OrderedDict
 from typing import Type, TypeVar
 import httpx
@@ -52,8 +54,36 @@ class LLMGateway:
         self.groq_max_tokens = int(os.getenv("GROQ_MAX_COMPLETION_TOKENS", "12000"))
         self.cache_ttl = float(os.getenv("LLM_CACHE_TTL_SECONDS", "900"))
         self.cache_size = int(os.getenv("LLM_CACHE_SIZE", "64"))
+        self.cache_path = os.getenv("LLM_CACHE_PATH", "sandbox/llm_cache.sqlite3")
         self._cache: OrderedDict[tuple[str, str, str], tuple[float, T]] = OrderedDict()
+        self._cache_connection = self._open_cache()
         self.gemini_client = self._build_gemini_client()
+
+    def _open_cache(self) -> sqlite3.Connection:
+        cache_directory = os.path.dirname(self.cache_path)
+        if cache_directory:
+            os.makedirs(cache_directory, exist_ok=True)
+        connection = sqlite3.connect(self.cache_path, timeout=10)
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS llm_responses (
+                cache_key TEXT PRIMARY KEY,
+                schema_name TEXT NOT NULL,
+                model TEXT NOT NULL,
+                prompt_hash TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                response_json TEXT NOT NULL
+            )
+            """
+        )
+        connection.commit()
+        return connection
+
+    @staticmethod
+    def _open_cache_at_path(path: str) -> sqlite3.Connection:
+        gateway = LLMGateway.__new__(LLMGateway)
+        gateway.cache_path = path
+        return gateway._open_cache()
 
     def _build_gemini_client(self):
         if self.gemini_auth_mode == "api_key":
@@ -287,6 +317,12 @@ class LLMGateway:
         if cached:
             del self._cache[cache_key]
 
+        persisted = self._load_persisted(cache_key, schema)
+        if persisted is not None:
+            self._cache[cache_key] = (time.monotonic(), persisted)
+            self._cache.move_to_end(cache_key)
+            return persisted.model_copy(deep=True)
+
         if selected_model.startswith("local:"):
             try:
                 return await self._fallback_local(
@@ -394,6 +430,76 @@ class LLMGateway:
         self._cache.move_to_end(key)
         while len(self._cache) > self.cache_size:
             self._cache.popitem(last=False)
+        if not hasattr(self, "_cache_connection"):
+            return
+        digest = hashlib.sha256(key[2].encode("utf-8")).hexdigest()
+        self._cache_connection.execute(
+            """
+            INSERT INTO llm_responses
+                (cache_key, schema_name, model, prompt_hash, created_at, response_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(cache_key) DO UPDATE SET
+                created_at=excluded.created_at,
+                response_json=excluded.response_json
+            """,
+            (
+                self._persistent_key(key),
+                key[0],
+                key[1],
+                digest,
+                time.time(),
+                result.model_dump_json(),
+            ),
+        )
+        self._cache_connection.commit()
+        self._prune_persisted()
+
+    @staticmethod
+    def _persistent_key(key: tuple[str, str, str]) -> str:
+        return hashlib.sha256("\0".join(key).encode("utf-8")).hexdigest()
+
+    def _load_persisted(self, key: tuple[str, str, str], schema: Type[T]) -> T | None:
+        if not hasattr(self, "_cache_connection"):
+            return None
+        row = self._cache_connection.execute(
+            "SELECT created_at, response_json FROM llm_responses WHERE cache_key = ?",
+            (self._persistent_key(key),),
+        ).fetchone()
+        if row is None:
+            return None
+        if time.time() - row[0] >= self.cache_ttl:
+            self._cache_connection.execute(
+                "DELETE FROM llm_responses WHERE cache_key = ?",
+                (self._persistent_key(key),),
+            )
+            self._cache_connection.commit()
+            return None
+        try:
+            return schema.model_validate_json(row[1])
+        except Exception:
+            self._cache_connection.execute(
+                "DELETE FROM llm_responses WHERE cache_key = ?",
+                (self._persistent_key(key),),
+            )
+            self._cache_connection.commit()
+            return None
+
+    def _prune_persisted(self) -> None:
+        self._cache_connection.execute(
+            "DELETE FROM llm_responses WHERE created_at < ?",
+            (time.time() - self.cache_ttl,),
+        )
+        self._cache_connection.execute(
+            """
+            DELETE FROM llm_responses
+            WHERE cache_key NOT IN (
+                SELECT cache_key FROM llm_responses
+                ORDER BY created_at DESC LIMIT ?
+            )
+            """,
+            (self.cache_size,),
+        )
+        self._cache_connection.commit()
 
     async def _fallback_groq(
         self,
@@ -448,7 +554,7 @@ class LLMGateway:
         model: str | None = None,
     ) -> T:
         if not self.local_llm_url:
-            return self._offline_fallback(schema, prompt)
+            return self._store_offline_result(cache_key, schema, prompt)
 
         headers = {
             "Authorization": f"Bearer {self.local_llm_key}",
@@ -511,7 +617,17 @@ class LLMGateway:
                 f"[Gateway Warning] Local LLM unavailable: {type(exc).__name__}: {exc!r}. "
                 "Utilizing offline fallback."
             )
-            return self._offline_fallback(schema, prompt)
+            return self._store_offline_result(cache_key, schema, prompt)
+
+    def _store_offline_result(
+        self,
+        cache_key: tuple[str, str, str],
+        schema: Type[T],
+        prompt: str,
+    ) -> T:
+        result = self._offline_fallback(schema, prompt)
+        self._store_cached(cache_key, result)
+        return result
 
     @staticmethod
     def _validate_local_result(content: str, schema: Type[T]) -> T:

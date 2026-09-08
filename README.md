@@ -199,6 +199,8 @@ The gateway chooses a provider from the model setting and falls back when a prov
 | `GEMINI_MODEL` | Primary Gemini model; the current default is `gemini-3.8-flash` |
 | `GEMINI_FALLBACK_MODEL` | Gemini fallback model; the current default is `gemini-3.5-flash` |
 | `GEMINI_TIMEOUT_SECONDS` | Vertex request timeout, default `60` seconds |
+| `LLM_CACHE_PATH` | Persistent SQLite CAG response cache, default `sandbox/llm_cache.sqlite3` |
+| `LLM_CACHE_TTL_SECONDS` / `LLM_CACHE_SIZE` | Persistent and in-memory cache expiry and entry limit |
 | `GROQ_API_KEY` | Groq-compatible fallback generation |
 | `DEVELOPER_MODEL` | Model used to generate source and tests; defaults to `gemini-3.8-flash` through Vertex AI |
 | `PLANNER_MODEL` | Model used to turn a prompt into tasks |
@@ -208,7 +210,7 @@ The gateway chooses a provider from the model setting and falls back when a prov
 | `MAG_MEMORY_PATH` | SQLite path for persistent research memory |
 | `GITHUB_TOKEN` / `GITHUB_REPO` | Optional pull-request delivery |
 
-Planner, developer, and healer agents use Gemini through Vertex AI ADC by default. For a local Ollama developer, use a model selector such as `DEVELOPER_MODEL=local:qwen2.5:7b`. LoRA adapters are managed by Ollama when building a custom model; DaedalusOS only receives the resulting model name. If no provider is available, the gateway includes narrowly scoped offline support for the Roman numeral, token-bucket, and calculator demo requirements; unrelated code-generation requests are rejected rather than given a generic patch.
+Planner, developer, and healer agents use Gemini through Vertex AI ADC by default. Validated responses are cached in memory and persisted to SQLite, so repeated prompts can reuse planning, code, and healing results across workflow runs and restarts. Cache entries are scoped by schema, model, and prompt, expire by TTL, and are discarded if they no longer validate. For a local Ollama developer, use a model selector such as `DEVELOPER_MODEL=local:qwen2.5:7b`. If no provider is available, the gateway includes narrowly scoped offline support for the Roman numeral, token-bucket, and calculator demo requirements; unrelated code-generation requests are rejected rather than given a generic patch.
 
 ## Run tests
 
