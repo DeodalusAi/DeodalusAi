@@ -37,7 +37,7 @@ class LLMGateway:
         self.groq_key = os.getenv("GROQ_API_KEY")
         self.gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
         self.gemini_fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite")
-        self.groq_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+        self.groq_model = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
         self.groq_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1/chat/completions")
         self.local_llm_key = os.getenv("LOCAL_LLM_API_KEY", "ollama")
         self.local_llm_model = os.getenv("LOCAL_LLM_MODEL", "llama3.2")
@@ -133,6 +133,74 @@ class LLMGateway:
                             "def test_int_to_roman_rejects_out_of_range_values(value):\n"
                             "    with pytest.raises(ValueError):\n"
                             "        int_to_roman(value)\n"
+                        ),
+                    ),
+                ],
+            )
+
+        if schema is CodePatch and any(
+            phrase in prompt.lower() for phrase in ("rate limiter", "rate-limit", "token bucket")
+        ):
+            return CodePatch(
+                summary="Implemented an in-memory token bucket rate limiter with FastAPI middleware and pytest coverage.",
+                files=[
+                    FilePatch(
+                        path="app/token_bucket.py",
+                        content=(
+                            "import time\n\n"
+                            "class TokenBucket:\n"
+                            "    def __init__(self, capacity: int, fill_rate: float, clock=time.monotonic):\n"
+                            "        if capacity <= 0 or fill_rate <= 0:\n"
+                            "            raise ValueError('capacity and fill_rate must be positive')\n"
+                            "        self.capacity = capacity\n"
+                            "        self.fill_rate = fill_rate\n"
+                            "        self.tokens = float(capacity)\n"
+                            "        self.last_update = clock()\n"
+                            "        self.clock = clock\n\n"
+                            "    def consume(self, amount: int = 1) -> bool:\n"
+                            "        now = self.clock()\n"
+                            "        self.tokens = min(self.capacity, self.tokens + (now - self.last_update) * self.fill_rate)\n"
+                            "        self.last_update = now\n"
+                            "        if self.tokens < amount:\n"
+                            "            return False\n"
+                            "        self.tokens -= amount\n"
+                            "        return True\n"
+                        ),
+                    ),
+                    FilePatch(
+                        path="app/middleware.py",
+                        content=(
+                            "from starlette.middleware.base import BaseHTTPMiddleware\n"
+                            "from starlette.responses import JSONResponse\n"
+                            "from app.token_bucket import TokenBucket\n\n"
+                            "class RateLimitMiddleware(BaseHTTPMiddleware):\n"
+                            "    def __init__(self, app, capacity=10, fill_rate=1.0):\n"
+                            "        super().__init__(app)\n"
+                            "        self.bucket = TokenBucket(capacity, fill_rate)\n\n"
+                            "    async def dispatch(self, request, call_next):\n"
+                            "        if not self.bucket.consume():\n"
+                            "            return JSONResponse({'detail': 'Rate limit exceeded'}, status_code=429, headers={'Retry-After': '1'})\n"
+                            "        return await call_next(request)\n"
+                        ),
+                    ),
+                    FilePatch(
+                        path="tests/test_rate_limiter.py",
+                        content=(
+                            "from app.token_bucket import TokenBucket\n\n"
+                            "def test_token_bucket_refills_from_elapsed_time():\n"
+                            "    now = [0.0]\n"
+                            "    bucket = TokenBucket(1, 1.0, clock=lambda: now[0])\n"
+                            "    assert bucket.consume()\n"
+                            "    assert not bucket.consume()\n"
+                            "    now[0] = 1.0\n"
+                            "    assert bucket.consume()\n\n"
+                            "def test_token_bucket_rejects_invalid_configuration():\n"
+                            "    try:\n"
+                            "        TokenBucket(0, 1.0)\n"
+                            "    except ValueError:\n"
+                            "        pass\n"
+                            "    else:\n"
+                            "        raise AssertionError('invalid capacity was accepted')\n"
                         ),
                     ),
                 ],

@@ -55,3 +55,17 @@ def test_offline_fallback_rejects_generic_code_patch():
             __import__("app.schemas", fromlist=["CodePatch"]).CodePatch,
             "Build a temperature converter",
         )
+
+
+def test_offline_fallback_supports_rate_limiter_requirement():
+    gateway = LLMGateway.__new__(LLMGateway)
+
+    result = gateway._offline_fallback(
+        __import__("app.schemas", fromlist=["CodePatch"]).CodePatch,
+        "Build an in-memory token bucket rate limiter with FastAPI middleware and pytest tests.",
+    )
+
+    paths = {file_patch.path for file_patch in result.files}
+    assert "app/token_bucket.py" in paths
+    assert "app/middleware.py" in paths
+    assert "tests/test_rate_limiter.py" in paths
