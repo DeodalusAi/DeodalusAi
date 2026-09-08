@@ -6,6 +6,22 @@ DaedalusOS is an autonomous software-engineering workflow built for teams that w
 
 The repository name is `DeodulusAi`; the product and workflow are called **DaedalusOS**.
 
+## Demo Screenshots
+
+The DaedalusOS interface makes the workflow visible from an idle catalogue through verified source, test output, and publication readiness.
+
+### Verified workflow
+
+![Completed DaedalusOS workflow showing generated source, passing tests, and publication status](docs/images/demo-complete-run.png)
+
+### Idle manuscript view
+
+![Idle DaedalusOS manuscript view before a workflow begins](docs/images/demo-idle-manuscript.png)
+
+### Workflow graph view
+
+![Idle DaedalusOS graph view showing planner, researcher, developer, tester, healer, and publication stages](docs/images/demo-idle-graph.png)
+
 ## Why it is interesting
 
 - **A complete engineering loop:** planning, research, implementation, testing, review, healing, and delivery are connected in one workflow.
