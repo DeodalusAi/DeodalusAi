@@ -152,7 +152,14 @@ copy .env.example .env        # Windows
 # cp .env.example .env        # macOS/Linux
 ```
 
-At minimum, configure one LLM provider. Add `GITHUB_TOKEN` and `GITHUB_REPO` only when you want the workflow to open pull requests. The gateway and researcher include local fallbacks, so the test suite can run without cloud credentials.
+At minimum, configure one LLM provider. For Gemini through your Google Cloud billing account, use Application Default Credentials (ADC), not an API key:
+
+```bash
+gcloud auth application-default login
+gcloud config set project YOUR_GCP_PROJECT_ID
+```
+
+Set `GOOGLE_CLOUD_PROJECT` in `.env` to the project that owns your Gemini/Vertex AI billing and enable the Vertex AI API in that project. The application uses Vertex AI's `global` location by default so the latest Gemini models are available. Add `GITHUB_TOKEN` and `GITHUB_REPO` only when you want the workflow to open pull requests.
 
 ### 3. Start the API and UI
 
@@ -160,7 +167,15 @@ At minimum, configure one LLM provider. Add `GITHUB_TOKEN` and `GITHUB_REPO` onl
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Open <http://127.0.0.1:8000>. The browser UI starts a run and follows its live event stream.
+Open <http://127.0.0.1:8000> and enter your requirement in the **Request** field. Add the target as `owner/repository`, keep the base branch as `main`, choose an iteration limit, and select **Start Demo**. The browser UI starts a run and follows its live event stream through planning, research, code generation, testing, healing, and optional pull-request delivery.
+
+For a first smoke test, enter:
+
+```text
+Build an in-memory token bucket rate limiter with FastAPI middleware and pytest tests.
+```
+
+The UI can run the workflow without GitHub delivery when `GITHUB_TOKEN` and `GITHUB_REPO` are omitted. When delivery is enabled, use a repository where the configured token has permission to create branches and pull requests.
 
 To call the API directly:
 
@@ -178,9 +193,14 @@ The gateway chooses a provider from the model setting and falls back when a prov
 
 | Setting | Purpose |
 | --- | --- |
-| `GEMINI_API_KEY` | Gemini structured generation and embeddings |
+| `GEMINI_AUTH_MODE` | Gemini authentication mode; defaults to `adc` and uses Vertex AI ADC |
+| `GOOGLE_CLOUD_PROJECT` | GCP project billed for Gemini through Vertex AI |
+| `GOOGLE_CLOUD_LOCATION` | Vertex AI location, default `global` for access to the latest Gemini models |
+| `GEMINI_MODEL` | Primary Gemini model; the current default is `gemini-3.8-flash` |
+| `GEMINI_FALLBACK_MODEL` | Gemini fallback model; the current default is `gemini-3.5-flash` |
+| `GEMINI_TIMEOUT_SECONDS` | Vertex request timeout, default `60` seconds |
 | `GROQ_API_KEY` | Groq-compatible fallback generation |
-| `DEVELOPER_MODEL` | Model used to generate source and tests |
+| `DEVELOPER_MODEL` | Model used to generate source and tests; defaults to `gemini-3.8-flash` through Vertex AI |
 | `PLANNER_MODEL` | Model used to turn a prompt into tasks |
 | `HEALER_MODEL` | Model used to repair a failing patch |
 | `LOCAL_LLM_MODEL` | Ollama model name when using a `local:` model |
@@ -188,7 +208,7 @@ The gateway chooses a provider from the model setting and falls back when a prov
 | `MAG_MEMORY_PATH` | SQLite path for persistent research memory |
 | `GITHUB_TOKEN` / `GITHUB_REPO` | Optional pull-request delivery |
 
-For a local Ollama developer, use a model selector such as `DEVELOPER_MODEL=local:qwen2.5:7b`. LoRA adapters are managed by Ollama when building a custom model; DaedalusOS only receives the resulting model name.
+Planner, developer, and healer agents use Gemini through Vertex AI ADC by default. For a local Ollama developer, use a model selector such as `DEVELOPER_MODEL=local:qwen2.5:7b`. LoRA adapters are managed by Ollama when building a custom model; DaedalusOS only receives the resulting model name. If no provider is available, the gateway includes narrowly scoped offline support for the Roman numeral, token-bucket, and calculator demo requirements; unrelated code-generation requests are rejected rather than given a generic patch.
 
 ## Run tests
 

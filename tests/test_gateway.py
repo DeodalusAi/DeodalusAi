@@ -7,6 +7,26 @@ from app.producer.gateway import GenerationUnavailable, LLMGateway
 from app.schemas import TaskBreakdown
 
 
+def test_gemini_uses_vertex_adc_by_default(monkeypatch):
+    calls = []
+
+    class FakeGenai:
+        @staticmethod
+        def Client(**kwargs):
+            calls.append(kwargs)
+            return "adc-client"
+
+    monkeypatch.setattr("app.producer.gateway.genai", FakeGenai)
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo-project")
+    monkeypatch.delenv("GEMINI_AUTH_MODE", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    gateway = LLMGateway()
+
+    assert gateway.gemini_client == "adc-client"
+    assert calls == [{"vertexai": True, "project": "demo-project", "location": "global"}]
+
+
 def test_gemini_honors_agent_model():
     gateway = LLMGateway.__new__(LLMGateway)
     gateway.gemini_model = "global-model"
@@ -69,3 +89,16 @@ def test_offline_fallback_supports_rate_limiter_requirement():
     assert "app/token_bucket.py" in paths
     assert "app/middleware.py" in paths
     assert "tests/test_rate_limiter.py" in paths
+
+
+def test_offline_fallback_supports_calculator_requirement():
+    gateway = LLMGateway.__new__(LLMGateway)
+
+    result = gateway._offline_fallback(
+        __import__("app.schemas", fromlist=["CodePatch"]).CodePatch,
+        "Build a simple calculator application.",
+    )
+
+    paths = {file_patch.path for file_patch in result.files}
+    assert "app/calculator.py" in paths
+    assert "tests/test_calculator.py" in paths
